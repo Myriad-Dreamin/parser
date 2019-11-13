@@ -407,7 +407,6 @@ namespace parse {
 						model->sym_from_string_false(line);
 					}
 				} else {
-					delete model;
 					return model->error("invalid statement: either uter or term at beginning");
 				}
 			} else {
@@ -417,10 +416,6 @@ namespace parse {
 		print::print<decltype(model->sym_table)>(model->sym_table, true);
 		print::print<decltype(model->prods)>(model->prods, true);
 		return model;
-		// while(salg::get_till<char>(std::cin, line)) {
-		// 	salg::split(line, ' ', atos);
-		// 	auto prod = Production(atos);
-		// }
 	}
 
 	
