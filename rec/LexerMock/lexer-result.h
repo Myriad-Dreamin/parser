@@ -15,6 +15,8 @@ enum class Token: uint16_t {
 	Lbr,
 	Rbr,
 	Num,
+	Eps = 0xfffd,
+	Dol = 0xfffe,
 	Eof = 0xffff,
 };
 
@@ -41,6 +43,12 @@ std::ostream &operator<<(std::ostream &os, Token x) {
 			break;
 		case Token::Num:
 			os << "Num";
+			break;
+		case Token::Eps:
+			os << "Eps";
+			break;
+		case Token::Dol:
+			os << "Dol";
 			break;
 		case Token::Eof:
 			os << "Eof";

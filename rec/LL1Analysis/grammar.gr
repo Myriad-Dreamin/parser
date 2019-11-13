@@ -1,7 +1,10 @@
 # grammar model
 uter E = 0, ED = 1, T = 2, TD = 3, F = 4
-term + = 0, - = 1, * = 2, / = 3, ( = 4, ) = 5, num = 6
+term + = 0, - = 1, * = 2, / = 3, ( = 4, ) = 5, num = 6, epsilon = 65533, dollar = 65534
 P {
     E -> T | T ED
-    ED -> + ED | - ED
+    ED -> + T ED | - T ED | epsilon
+    T -> F | F TD
+    TD -> * F TD | / F TD | epsilon
+    F -> ( E ) | num
 }
