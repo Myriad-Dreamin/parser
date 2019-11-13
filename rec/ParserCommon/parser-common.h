@@ -1,45 +1,74 @@
 #pragma once
 
 #include <iostream>
+#include <type_traits>
+
+namespace parse {
 
 
-template<typename T>
-const char *stringify(T v);
+template<typename term_t, typename uterm_t>
+struct Symbol {
+	static const bool uterm_v = true;
+	static constexpr bool term_v = !uterm_v;
+	static const uterm_t undecided = static_cast<uterm_t>(-1);
 
-template<typename token_t, typename uterm_t>
-struct Node {
 	union Data {
-		token_t token;
+		term_t term;
 		uterm_t uterm;
 	} data;
 	bool ut;
-
-	Node(token_t x) {
-		data.token = x;
-		ut = false;
-	}
-	Node(uterm_t x, bool) {
-		data.uterm = x;
-		ut = true;
+	
+	Symbol() {
+		data.uterm = undecided;
+		ut = uterm_v;
 	}
 
+	Symbol(term_t x) {
+		data.term = x;
+		ut = term_v;
+	}
+	template<typename T>
+	Symbol(T x, bool utrm) {
+		if (utrm) {
+			data.uterm = static_cast<uterm_t>(x);
+		} else {
+			data.term = static_cast<term_t>(x);
+		}
+		ut = utrm;
+	}
+
+	template<typename u, typename v>
+	friend std::ostream &operator<<(std::ostream & os, Symbol<u, v> &res);
+};
+
+template<typename term_t, typename uterm_t>
+struct Node: public Symbol<term_t, uterm_t> {
+	using symbol = Symbol<term_t, uterm_t>;
+	Node(term_t x) :symbol(x) {}
+	Node(uterm_t x, bool y) :symbol(x, y) {}
+	
 	Node *&insert(Node * chx) {
 		ch.push_back(chx);
 		return ch.back();
 	}
-
 	std::vector<Node*> ch;
 	template<typename u, typename v>
 	friend std::ostream &operator<<(std::ostream & os, Node<u, v> &res);
 };
 
-template<typename token_t, typename uterm_t>
-std::ostream &operator<<(std::ostream & os, Node<token_t, uterm_t> &res) {
+template<typename term_t, typename uterm_t>
+std::ostream &operator<<(std::ostream & os, Symbol<term_t, uterm_t> &res) {
 	if (res.ut) {
-		os << "{" << stringify(res.data.uterm) << ", {";
+		os << "{ut," << res.data.uterm << "}";
 	} else {
-		os << "{" << stringify(res.data.token) << ", {";
+		os << "{t," << res.data.term << "}";
 	}
+	return os;
+}
+
+template<typename term_t, typename uterm_t>
+std::ostream &operator<<(std::ostream & os, Node<term_t, uterm_t> &res) {
+	os << "{" << (Symbol<term_t, uterm_t>&)(res) << ", {";
 	for (auto &chx : res.ch) {
 		os << *chx << ", ";
 	}
@@ -53,27 +82,31 @@ enum class ResultCode: uint16_t {
 	Error,
 };
 
-template<>
-const char *stringify(ResultCode x) {
+
+std::ostream &operator<<(std::ostream &os, ResultCode x) {
 	switch (x) {
 		case ResultCode::Ok:
-			return "Ok";
+			os << "Ok";
+			break;
 		case ResultCode::Error:
-			return "Error";
+			os << "Error";
+			break;
 		default:
-			return "ResultCode<NotFound>";
+			os << "ResultCode<NotFound>";
+			break;
 	}
+	return os;
 }
 
-// template<typename token_t, class Source, class TokenTable>
+// template<typename term_t, class Source, class TokenTable>
 // class Parser;
 
-template<typename token_t, typename uterm_t>
+template<typename term_t, typename uterm_t>
 struct Result {
-	template<typename parser_token_t, class Source, class TokenTable>
+	template<typename parser_term_t, class Source, class TokenTable>
 	friend class Parser;
-	using Node = Node<token_t, uterm_t>;
-	Node *rt;
+	using node_t = Node<term_t, uterm_t>;
+	node_t *rt;
 	ResultCode code;
 	virtual ~Result() {
 		release();
@@ -86,16 +119,16 @@ struct Result {
 		rt = nullptr;
 	}
 protected:
-	std::vector<Node*> nodes;
+	std::vector<node_t*> nodes;
 	template<typename T>
-	Node *alloc(T x) {
-		Node *n = new Node(x);
+	node_t *alloc(T x) {
+		node_t *n = new node_t(x);
 		nodes.push_back(n);
 		return n;
 	}
 	template<typename T>
-	Node *alloc(T x, bool y) {
-		Node *n = new Node(x, y);
+	node_t *alloc(T x, bool y) {
+		node_t *n = new node_t(x, y);
 		nodes.push_back(n);
 		return n;
 	}
@@ -104,9 +137,9 @@ protected:
 	friend std::ostream &operator<<(std::ostream & os, Result<u, v> &res);
 };
 
-template<typename token_t, typename uterm_t>
-std::ostream &operator<<(std::ostream & os, Result<token_t, uterm_t> &res) {
-	os << "{ code: " << stringify(res.code) << ", node: ";
+template<typename term_t, typename uterm_t>
+std::ostream &operator<<(std::ostream & os, Result<term_t, uterm_t> &res) {
+	os << "{ code: " << res.code << ", node: ";
 	os << *res.rt;
 	os << "}";
 	return os;
@@ -121,20 +154,30 @@ enum class UTerm: uint16_t {
 	F,
 };
 
-template<>
-const char *stringify(UTerm x) {
+
+std::ostream &operator<<(std::ostream &os, UTerm x) {
 	switch (x) {
 		case UTerm::E:
-			return "E";
+			os << "E";
+			break;
 		case UTerm::ED:
-			return "ED";
+			os << "ED";
+			break;
 		case UTerm::T:
-			return "T";
+			os << "T";
+			break;
 		case UTerm::TD:
-			return "TD";
+			os << "TD";
+			break;
 		case UTerm::F:
-			return "F";
+			os << "F";
+			break;
 		default:
-			return "UTerm<NotFound>";
+			os << "UTerm<NotFound>";
+			break;
 	}
+	return os;
 }
+
+}
+

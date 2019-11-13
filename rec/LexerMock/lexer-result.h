@@ -18,28 +18,38 @@ enum class Token: uint16_t {
 	Eof = 0xffff,
 };
 
-template<>
-const char *stringify(Token x) {
+
+std::ostream &operator<<(std::ostream &os, Token x) {
 	switch (x) {
 		case Token::Add:
-			return "Add";
+			os << "Add";
+			break;
 		case Token::Sub:
-			return "Sub";
+			os << "Sub";
+			break;
 		case Token::Mul:
-			return "Mul";
+			os << "Mul";
+			break;
 		case Token::Div:
-			return "Div";
+			os << "Div";
+			break;
 		case Token::Lbr:
-			return "Lbr";
+			os << "Lbr";
+			break;
 		case Token::Rbr:
-			return "Rbr";
+			os << "Rbr";
+			break;
 		case Token::Num:
-			return "Num";
+			os << "Num";
+			break;
 		case Token::Eof:
-			return "Eof";
+			os << "Eof";
+			break;
 		default:
-			return "Token<NotFound>";
+			os << "Token<NotFound>";
+			break;
 	}
+	return os;
 }
 
 struct LexerResult {
