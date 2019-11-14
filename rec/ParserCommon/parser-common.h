@@ -31,12 +31,30 @@ struct Symbol {
 	Symbol() {
 		data.uterm = undecided;
 		ut = uterm_v;
+		// std::cout << "construct" << std::endl;
 	}
 
 	Symbol(term_t x) {
 		data.term = x;
 		ut = term_v;
+		// std::cout << "construct" << std::endl;
 	}
+
+	template<typename T>
+	Symbol(T x, bool utrm) {
+		if (utrm) {
+			data.uterm = static_cast<uterm_t>(x);
+		} else {
+			data.term = static_cast<term_t>(x);
+		}
+		ut = utrm;
+		// std::cout << "construct" << std::endl;
+	}
+
+	~Symbol() {
+		// std::cout << "deconstruct" << std::endl;
+	}
+	
 
 	bool is_unterm() const {
 		return ut;
@@ -65,16 +83,6 @@ struct Symbol {
 
 	bool operator!= (const Symbol<term_t, uterm_t> &y) const {
 		return !operator==(y);
-	}
-
-	template<typename T>
-	Symbol(T x, bool utrm) {
-		if (utrm) {
-			data.uterm = static_cast<uterm_t>(x);
-		} else {
-			data.term = static_cast<term_t>(x);
-		}
-		ut = utrm;
 	}
 
 	template<typename u, typename v>
@@ -435,12 +443,12 @@ void calculate_first_fixed_point(Grammar &g) {
 				continue;
 			}
 			auto &sym = symset.first;
-			auto &set = *symset.second;
-			size_t ls = set.size();
+			auto set = symset.second;
+			size_t ls = set->size();
 			// print::print("testing ");
-			// print::print(&set); print::print(" ");
+			// print::print(set); print::print(" ");
 			// print::print(symset.second); print::print(" "); print::print(sym); print::print(" ");
-			// print::print(set, true);
+			// print::print(*set, true);
 			// lower_bound or sort() && iter will be better
 			for (auto &prod: g.prods) {
 				if (prod.lhs == sym) {
@@ -450,22 +458,29 @@ void calculate_first_fixed_point(Grammar &g) {
 					for (auto &rsym: prod.rhs) {
 						auto &rset = *g.first[rsym];
 						// print::print("merge ");
-						// print::print(set);
+						// print::print(*set);
 						// print::print(" ");
 						// print::print(rset, true);
 
-						set.insert(rset.begin(), rset.end());
+						set->insert(rset.begin(), rset.end());
 						if (!rset.count(grammar_traits::epsilon)) {
 							break;
 						}
 					}
 				}
 			}
-			if (set.size() != ls) {
+			if (set->size() != ls) {
 				changed = true;
 			}
 		}
 	} while(changed);
+	// for (auto &c : g.first) {
+	// 	print::print(c.first);
+	// 	print::print(' ');
+	// 	print::print(c.second);
+	// 	print::print(' ');
+	// 	print::print(*c.second, true);
+	// }
 }
 
 namespace epsilonable {
@@ -485,6 +500,7 @@ void calculate_epsilonable(Grammar &g) {
 	for(auto &ss: g.sym_table) {
 		g.epsable[ss.second] = ss.second.is_unterm() ? ExploreState::Unknown: ExploreState::No;
 	}
+	g.epsable[grammar_traits::epsilon] = ExploreState::Yes;
 	for (auto &prod: g.prods) {
 		auto &sym = prod.lhs;
 		if (g.epsable[sym] != ExploreState::Unknown) {
@@ -571,7 +587,7 @@ void calculate_follow_fixed_point(Grammar &g) {
 				auto &rsym = rhs[i];
 				if (rsym.is_unterm()) {
 					auto sz = g.follow[rsym]->size();
-					g.follow[rsym]->merge(mset);
+					g.follow[rsym]->insert(mset.begin(), mset.end());
 					if (g.follow[rsym]->size() - sz) {
 						changed = true;
 					}
@@ -579,7 +595,7 @@ void calculate_follow_fixed_point(Grammar &g) {
 				if (!g.epsable[rsym]) {
 					mset.clear();
 				}
-				mset.merge(*g.first[rsym]);
+				mset.insert(g.first[rsym]->begin(), g.first[rsym]->end());
 				mset.erase(grammar_traits::epsilon);
 			}
 		}

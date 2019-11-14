@@ -11,6 +11,7 @@
 #include <regex>
 #include <queue>
 #include <cassert>
+#include <stack>
 #include <algorithm>
 #ifdef VS_COMPILE
 #include <lexer-result.h>
@@ -29,19 +30,69 @@
 
 namespace parse {
 namespace action_space {
-	struct action {};
+	struct action {
+		virtual std::ostream &output(std::ostream &os) = 0;
+	 };
+
+	std::ostream &operator<<(std::ostream &os, action *x) {
+		// print::print(x, false, os);
+		os << "{";
+		x->output(os);
+		os << "}";
+		return os;
+	}
+
 	template<typename symbol_t>
 	struct replace_action: public action {
 		const std::vector<symbol_t> &reduce;
 		const std::vector<symbol_t> &produce;
+		replace_action(const std::vector<symbol_t> &reduce,
+		const std::vector<symbol_t> &produce) : reduce(reduce), produce(produce) {}
+		virtual std::ostream &output(std::ostream &os) override {
+			return os << *this;
+		}
 	};
+	
+
+	template<typename symbol_t>
+	std::ostream &operator<<(std::ostream &os, replace_action<symbol_t> &x) {
+		os << x.reduce << " -> ";
+		print::print(x.produce, false, os);
+		return os;
+	}
+
+
 	template<typename symbol_t>
 	struct replace_action1: public action {
 		const symbol_t &reduce;
 		const std::vector<symbol_t> &produce;
+		replace_action1(const symbol_t &reduce,
+		const std::vector<symbol_t> &produce) : reduce(reduce), produce(produce) {
+
+		}
+		virtual std::ostream &output(std::ostream &os) override {
+			return os << *this;
+		}
 	};
-	struct shift_action: public action { int shift_number; };
-	struct error_action: public action { const std::string error_info; };
+
+	template<typename symbol_t>
+	std::ostream &operator<<(std::ostream &os, replace_action1<symbol_t> &x) {
+		print::print(x.reduce, false, os);
+		os << " -> ";
+		print::print(x.produce, false, os);
+		return os;
+	}
+
+	struct shift_action: public action { int shift_number;
+		virtual std::ostream &output(std::ostream &os) override {
+			return os << shift_number;
+		}
+	};
+	struct error_action: public action { const std::string error_info;
+		virtual std::ostream &output(std::ostream &os) override {
+			return os << error_info;
+		}
+	};
 }
 
 struct InitFailed: std::exception {
@@ -50,7 +101,9 @@ struct InitFailed: std::exception {
 
 
 template<class grammar_traits,
-	class container=std::map<grammar_traits, action_space::action*>>
+	class container=std::map<
+	typename grammar_traits::symbol_t,
+	std::map<typename grammar_traits::symbol_t, action_space::action*>*>>
 class BasicLLGrammar {
 public:
 	using model_t = typename grammar_traits::model_t;
@@ -62,11 +115,13 @@ public:
 	using grammar_t = BasicLLGrammar<grammar_traits>;
 
 protected:
-	container &table;
-	BasicLLGrammar(container &table) : table(table) {}
+	container *table;
+	std::stack<symbol_t> stack;
+	symbol_t next_symbol;
 public:
-	void reset(){};
-	action_space::action act(const symbol_t &s){};
+	action_space::action *act(const symbol_t &s){};
+	template<class IStream>
+	void work(IStream &is){};
 };
 
 template<class Grammar, typename grammar_traits>
@@ -75,12 +130,12 @@ void get_first1_nc(
 	typename grammar_traits::production_t &prod,
 	std::set<typename grammar_traits::symbol_t> &res) {
 	for(auto &sym :prod.rhs) {
-		res.merge(*first[sym]);
-		if (!epsable(sym)) {
+		res.insert(g.first[sym]->begin(), g.first[sym]->end());
+		if (!g.epsable[sym]) {
 			return;
 		}
 	}
-	res.merge(*follow[prod.lhs]);
+	res.insert(g.follow[prod.lhs]->begin(), g.follow[prod.lhs]->end());
 }
 
 template<class Grammar, typename grammar_traits>
@@ -89,7 +144,7 @@ void get_first1(
 	typename grammar_traits::production_t &prod,
 	std::set<typename grammar_traits::symbol_t> &res) {
 	res.clear();
-	get_first1_nc(first, sequence, res);
+	get_first1_nc<Grammar, grammar_traits>(g, prod, res);
 }
 
 
@@ -112,7 +167,8 @@ private:
 	std::map<symbol_t, std::set<symbol_t>* > follow;
 	std::map<symbol_t, uint8_t> epsable;
 
-	std::map<symbol_t, action_space::action*> table;
+	using action_map = std::map<symbol_t, action_space::action*>;
+	std::map<symbol_t, action_map*> table;
 public:
 	LL1Grammar(model_t &model) :
 		first(),
@@ -152,15 +208,21 @@ public:
 			delete x.second;
 			x.second = nullptr;
 		}
-		for (auto &x: epsable) {
-			delete x.second;
-			x.second = nullptr;
-		}
 		for (auto &x: table) {
+			for (auto &y : *x.second) {
+				delete y.second;
+				y.second = nullptr;
+			}
 			delete x.second;
 			x.second = nullptr;
 		}
+		std::cout << "deconstruct" << std::endl;
 	}
+
+	// LL1Grammar(const LL1Grammar) {
+
+	// } 
+
 private:
 	void init() {
 		calculate_first_fixed_point<grammar_t, grammar_traits>(*this);
@@ -169,9 +231,11 @@ private:
 		for (auto &c : first) {
 			print::print(c.first);
 			print::print(' ');
+			print::print(c.second);
+			print::print(' ');
 			print::print(*c.second, true);
 		}
-		std::cout << std::endl;
+		std::cout << "fist end" << std::endl;
 		for (auto &c : epsable) {
 			print::print(c.first);
 			print::print(' ');
@@ -185,15 +249,40 @@ private:
 		}
 		print::print("begin symbol ");
 		print::print(this->begin_symbol, true);
-
+		
+		for (auto &c : sym_table) {
+			table[c.second] = new action_map();
+		}
 		// check()
 		std::set<symbol_t> mset;
-		for (auto prod: prods) {
-			get_first1(*this, prod, mset);
+		for (auto &prod: prods) {
+			get_first1<grammar_t, grammar_traits>(*this, prod, mset);
 			print::print(prod);
 			print::print(' ');
-			print::print(mset);
+			print::print(mset, true);
+			auto &acmp = *table[prod.lhs];
+			for(auto &sym : mset) {
+				if (acmp.count(sym)) {
+					std::stringstream s("conflct ");
+					print::print("prod:", false, s);
+					print::print(prod, false, s);
+					print::print("mset:", false, s);
+					print::print(mset, false, s);
+					print::print("symbol:", false, s);
+					print::print(sym, false, s);
+					throw std::logic_error(s.str());
+				}
+				action_space::action *a = new action_space::replace_action1<symbol_t>(prod.lhs, prod.rhs);
+				acmp[sym] = a;
+			}
 		}
+		for (auto &c : table) {
+			print::print(c.first);
+			print::print(' ');
+			print::print(*c.second, true);
+		}
+
+		Policy::table = &table;
 
 	}
 
@@ -205,6 +294,14 @@ private:
 
 	template<class u, class v>
 	friend void calculate_follow_fixed_point(u &g);
+
+	template<class u, class v>
+	friend void get_first1(u &g, typename v::production_t &prod,
+		std::set<typename v::symbol_t> &res);
+
+	template<class u, class v>
+	friend void get_first1_nc(u &g, typename v::production_t &prod,
+		std::set<typename v::symbol_t> &res);
 };
 
 

@@ -3,9 +3,9 @@ uter S = 0, E = 1, ED = 2, T = 3, TD = 4, F = 5
 term + = 0, - = 1, * = 2, / = 3, ( = 4, ) = 5, num = 6, epsilon = 65533, dollar = 65534
 P {
     S -> E
-    E -> T | T ED
+    E -> ( E ) ED | num ED
     ED -> + T ED | - T ED | epsilon
-    T -> F | F TD
+    T -> ( E ) TD | num TD
     TD -> * F TD | / F TD | epsilon
     F -> ( E ) | num
 }
