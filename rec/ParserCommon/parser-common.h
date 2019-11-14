@@ -395,6 +395,25 @@ Model<term_t, uterm_t> *G(const char *file_name){
 }	
 
 
+struct __M_TRAITS {
+	static const int32_t epsilon = -1;
+	static const int32_t dollar = -2;
+};
+
+template<typename __term_t=int32_t, typename __uterm_t=int32_t, class m_traits=__M_TRAITS>
+struct basic_grammar_traits {
+	using term_t = __term_t;
+	using uterm_t = __uterm_t;
+	using model_t = Model<term_t, uterm_t>;
+	using string = typename model_t::string;
+	using strvec = typename model_t::strvec;
+	using symbol_t = typename model_t::symbol_t;
+	using production_t = Production<symbol_t>;
+	static constexpr auto epsilon = m_traits::epsilon;
+	static constexpr auto dollar = m_traits::dollar;
+};
+
+
 template<class Grammar, class grammar_traits>
 void calculate_first_fixed_point(Grammar &g) {
 
@@ -449,9 +468,85 @@ void calculate_first_fixed_point(Grammar &g) {
 	} while(changed);
 }
 
+namespace epsilonable {
+	enum ExploreState{
+		No,
+		Yes,
+		Unknown,
+	};
+}
+
+template<class Grammar, class grammar_traits>
+void calculate_epsilonable(Grammar &g) {
+	using namespace epsilonable;
+	using production_t = typename Grammar::production_t;
+	std::vector<production_t*> conts;
+	
+	for(auto &ss: g.sym_table) {
+		g.epsable[ss.second] = ss.second.is_unterm() ? ExploreState::Unknown: ExploreState::No;
+	}
+	for (auto &prod: g.prods) {
+		auto &sym = prod.lhs;
+		if (g.epsable[sym] != ExploreState::Unknown) {
+			continue;
+		}
+		if (prod.rhs.size() == 1 && prod.rhs[0] == grammar_traits::epsilon) {
+			g.epsable[sym] = ExploreState::Yes;
+			continue;
+		}
+		bool cont = true;
+		for (auto &rsym:prod.rhs) {
+			auto &rst = g.epsable[rsym];
+			if (rst == ExploreState::No) {
+				cont = false;
+			}
+		}
+		if (cont) {
+			conts.push_back(&prod);
+		}
+	}
+	bool changed, prod_eps;
+	do {
+		changed = false;
+		for (typename std::make_signed<size_t>::type
+			i = conts.size() - 1; i >= 0; i--) {
+			auto &prod = *(conts[i]);
+			if (g.epsable[prod.lhs] != ExploreState::Unknown) {
+				std::swap(conts[i], conts.back());
+				conts.pop_back();
+				continue;
+			}
+			prod_eps = true;
+			for (auto &rsym:prod.rhs) {
+				auto &rst = g.epsable[rsym];
+				if (rst == ExploreState::No) {
+					prod_eps = false;
+					g.epsable[prod.lhs] = ExploreState::No;
+					changed = true;
+					std::swap(conts[i], conts.back());
+					conts.pop_back();
+					break;
+				}
+				if (rst == ExploreState::Unknown) {
+					prod_eps = false;
+					break;
+				}
+			}
+			if (prod_eps) {
+				g.epsable[prod.lhs] = ExploreState::Yes;
+				changed = true;
+			}
+		}
+	} while(changed);
+	for (auto &ss : g.sym_table) {
+		if (g.epsable[ss.second] == ExploreState::Unknown) {
+			g.epsable[ss.second] = ExploreState::No;
+		}
+	}
+}
+
 template<class Grammar, class grammar_traits>
 void calculate_follow_fixed_point(Grammar &g) {
-	using Grammar = LL1Grammar<term_t, uterm_t, grammar_traits>;
 	using symbol_t = typename Grammar::symbol_t;
 	auto &beg = g.begin_symbol;
 	for (auto &x: g.sym_table) {

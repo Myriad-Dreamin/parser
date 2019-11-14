@@ -28,22 +28,43 @@
 
 
 namespace parse {
+namespace action_space {
+	struct action {};
+	struct reduce_action: public action { int rn; };
+	struct shift_action: public action { int sn; };
+	struct error_action: public action { const std::string error_info; };
+}
 
-template<typename term_t, typename uterm_t, class grammar_traits>
-class LL1Grammar;
 
-template<typename term_t, typename uterm_t, class grammar_traits>
-void calculate_epsilonable(LL1Grammar<term_t, uterm_t, grammar_traits> &g);
-
-template<typename term_t, typename uterm_t, class grammar_traits>
-class LL1Grammar {
+template<class grammar_traits,
+	class container=std::map<grammar_traits, action_space::action*>>
+class BasicLLGrammar {
 public:
-	using model_t = Model<term_t, uterm_t>;
-	using string = typename model_t::string;
-	using strvec = typename model_t::strvec;
-	using symbol_t = typename model_t::symbol_t;
-	using production_t = Production<symbol_t>;
-	using grammar_t = LL1Grammar<term_t, uterm_t, grammar_traits>;
+	using model_t = typename grammar_traits::model_t;
+	using string = typename grammar_traits::string;
+	using strvec = typename grammar_traits::strvec;
+	using symbol_t = typename grammar_traits::symbol_t;
+	using production_t = typename grammar_traits::production_t;
+	
+	using grammar_t = BasicLLGrammar<grammar_traits>;
+protected:
+	container table;
+public:
+	void init(){};
+	action_space::action act(const symbol_t &s){};
+};
+
+
+template<class grammar_traits, class Policy=BasicLLGrammar<grammar_traits>>
+class LL1Grammar : public Policy {
+public:
+	using model_t = typename grammar_traits::model_t;
+	using string = typename grammar_traits::string;
+	using strvec = typename grammar_traits::strvec;
+	using symbol_t = typename grammar_traits::symbol_t;
+	using production_t = typename grammar_traits::production_t;
+	
+	using grammar_t = LL1Grammar<grammar_traits>;
 private:
 	std::map<string, symbol_t> &sym_table;
 	std::vector<production_t> &prods;
@@ -54,22 +75,28 @@ private:
 	std::map<symbol_t, uint8_t> epsable;
 public:
 	LL1Grammar(model_t &model) :
-		sym_table(model.sym_table),
 		first(),
+		follow(),
+		epsable(),
+		sym_table(model.sym_table),
 		prods(model.prods),
 		begin_symbol(model.begin_symbol) { init(); }
 
 	LL1Grammar(model_t *model) :
-		sym_table(model->sym_table),
 		first(),
+		follow(),
+		epsable(),
+		sym_table(model->sym_table),
 		prods(model->prods),
 		begin_symbol(model->begin_symbol) { init(); }
 
 	LL1Grammar(std::map<string, symbol_t> &sym_table,
 		std::vector<production_t> &prods,
 		const symbol_t &begin_symbol) :
-		sym_table(sym_table),
 		first(),
+		follow(),
+		epsable(),
+		sym_table(sym_table),
 		prods(prods),
 		begin_symbol(begin_symbol) { init(); }
 
@@ -82,8 +109,8 @@ public:
 private:
 	void init() {
 		calculate_first_fixed_point<grammar_t, grammar_traits>(*this);
-		calculate_epsilonable<term_t, uterm_t, grammar_traits>(*this);
-		calculate_follow_fixed_point<term_t, uterm_t, grammar_traits>(*this);
+		calculate_epsilonable<grammar_t, grammar_traits>(*this);
+		calculate_follow_fixed_point<grammar_t, grammar_traits>(*this);
 		for (auto &c : first) {
 			print::print(c.first);
 			print::print(' ');
@@ -108,92 +135,14 @@ private:
 	template<class u, class v>
 	friend void calculate_first_fixed_point(u &g);
 	
-	template<typename u, typename v, class w>
-	friend void calculate_epsilonable(LL1Grammar<u,v,w> &g);
+	template<class u, class w>
+	friend void calculate_epsilonable(u &g);
 
 	template<class u, class v>
 	friend void calculate_follow_fixed_point(u &g);
 
 };
 
-
-namespace epsilonable {
-	enum ExploreState{
-		No,
-		Yes,
-		Unknown,
-	};
-}
-
-template<typename term_t, typename uterm_t, class grammar_traits>
-void calculate_epsilonable(LL1Grammar<term_t, uterm_t, grammar_traits> &g) {
-	using namespace epsilonable;
-	using Grammar = LL1Grammar<term_t, uterm_t, grammar_traits>;
-	using production_t = typename Grammar::production_t;
-	std::vector<production_t*> conts;
-	
-	for(auto &ss: g.sym_table) {
-		g.epsable[ss.second] = ss.second.is_unterm() ? ExploreState::Unknown: ExploreState::No;
-	}
-	for (auto &prod: g.prods) {
-		auto &sym = prod.lhs;
-		if (g.epsable[sym] != ExploreState::Unknown) {
-			continue;
-		}
-		if (prod.rhs.size() == 1 && prod.rhs[0] == grammar_traits::epsilon) {
-			g.epsable[sym] = ExploreState::Yes;
-			continue;
-		}
-		bool cont = true;
-		for (auto &rsym:prod.rhs) {
-			auto &rst = g.epsable[rsym];
-			if (rst == ExploreState::No) {
-				cont = false;
-			}
-		}
-		if (cont) {
-			conts.push_back(&prod);
-		}
-	}
-	bool changed, prod_eps;
-	do {
-		changed = false;
-		for (typename std::make_signed<size_t>::type
-			i = conts.size() - 1; i >= 0; i--) {
-			auto &prod = *(conts[i]);
-			if (g.epsable[prod.lhs] != ExploreState::Unknown) {
-				std::swap(conts[i], conts.back());
-				conts.pop_back();
-				continue;
-			}
-			prod_eps = true;
-			for (auto &rsym:prod.rhs) {
-				auto &rst = g.epsable[rsym];
-				if (rst == ExploreState::No) {
-					prod_eps = false;
-					g.epsable[prod.lhs] = ExploreState::No;
-					changed = true;
-					std::swap(conts[i], conts.back());
-					conts.pop_back();
-					break;
-				}
-				if (rst == ExploreState::Unknown) {
-					prod_eps = false;
-					break;
-				}
-			}
-			if (prod_eps) {
-				g.epsable[prod.lhs] = ExploreState::Yes;
-				changed = true;
-			}
-		}
-	} while(changed);
-	for (auto &ss : g.sym_table) {
-		if (g.epsable[ss.second] == ExploreState::Unknown) {
-			g.epsable[ss.second] = ExploreState::No;
-		}
-	}
-}
 
 }
 
@@ -211,7 +160,8 @@ int main() {
 		std::cout << model->error() << std::endl;
 	}
 
-	using LL1 = parse::LL1Grammar<Token, parse::UTerm, grammar_traits_example>;
+	using gt = parse::basic_grammar_traits<Token, parse::UTerm, grammar_traits_example>;
+	using LL1 = parse::LL1Grammar<gt>;
 	auto grammar = LL1(model);
 
 	delete model;
