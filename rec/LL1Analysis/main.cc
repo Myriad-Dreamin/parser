@@ -36,9 +36,6 @@ template<typename term_t, typename uterm_t, class grammar_traits>
 void calculate_epsilonable(LL1Grammar<term_t, uterm_t, grammar_traits> &g);
 
 template<typename term_t, typename uterm_t, class grammar_traits>
-void calculate_follow_fixed_point(LL1Grammar<term_t, uterm_t, grammar_traits> &g);
-
-template<typename term_t, typename uterm_t, class grammar_traits>
 class LL1Grammar {
 public:
 	using model_t = Model<term_t, uterm_t>;
@@ -114,8 +111,8 @@ private:
 	template<typename u, typename v, class w>
 	friend void calculate_epsilonable(LL1Grammar<u,v,w> &g);
 
-	template<typename u, typename v, class w>
-	friend void calculate_follow_fixed_point(LL1Grammar<u,v,w> &g);
+	template<class u, class v>
+	friend void calculate_follow_fixed_point(u &g);
 
 };
 
@@ -196,49 +193,6 @@ void calculate_epsilonable(LL1Grammar<term_t, uterm_t, grammar_traits> &g) {
 			g.epsable[ss.second] = ExploreState::No;
 		}
 	}
-}
-
-
-template<typename term_t, typename uterm_t, class grammar_traits>
-void calculate_follow_fixed_point(LL1Grammar<term_t, uterm_t, grammar_traits> &g) {
-	using Grammar = LL1Grammar<term_t, uterm_t, grammar_traits>;
-	using symbol_t = typename Grammar::symbol_t;
-	auto &beg = g.begin_symbol;
-	for (auto &x: g.sym_table) {
-		auto &sym = x.second;
-		auto s = new std::set<symbol_t>();
-		if (sym == beg) {
-			s->insert(grammar_traits::dollar);
-		}
-		g.follow[sym] = s;
-	}
-
-	bool changed;
-	do {
-		changed = false;
-		for (auto &prod: g.prods) {
-			auto &lhs = prod.lhs;
-			auto &rhs = prod.rhs;
-			std::set<symbol_t> mset(*g.follow[lhs]);
-			mset.erase(grammar_traits::epsilon);
-			for (typename std::make_signed<size_t>::type
-				i = rhs.size() - 1; i >= 0; i--) {
-				auto &rsym = rhs[i];
-				if (rsym.is_unterm()) {
-					auto sz = g.follow[rsym]->size();
-					g.follow[rsym]->merge(mset);
-					if (g.follow[rsym]->size() - sz) {
-						changed = true;
-					}
-				}
-				if (!g.epsable[rsym]) {
-					mset.clear();
-				}
-				mset.merge(*g.first[rsym]);
-				mset.erase(grammar_traits::epsilon);
-			}
-		}
-	} while(changed);
 }
 
 }
