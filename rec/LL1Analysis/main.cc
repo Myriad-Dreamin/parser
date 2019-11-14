@@ -35,6 +35,10 @@ namespace action_space {
 	struct error_action: public action { const std::string error_info; };
 }
 
+struct InitFailed: std::exception {
+
+};
+
 
 template<class grammar_traits,
 	class container=std::map<grammar_traits, action_space::action*>>
@@ -47,8 +51,12 @@ public:
 	using production_t = typename grammar_traits::production_t;
 	
 	using grammar_t = BasicLLGrammar<grammar_traits>;
+
 protected:
 	container table;
+	void init_container() throw(InitFailed) {
+
+	}
 public:
 	void init(){};
 	action_space::action act(const symbol_t &s){};
