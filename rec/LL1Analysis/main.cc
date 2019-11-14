@@ -93,6 +93,12 @@ private:
 			print::print(*c.second, true);
 		}
 		std::cout << std::endl;
+		for (auto &c : epsable) {
+			print::print(c.first);
+			print::print(' ');
+			print::print(bool(c.second), true);
+		}
+		std::cout << std::endl;
 		for (auto &c : follow) {
 			print::print(c.first);
 			print::print(' ');
@@ -106,8 +112,6 @@ private:
 	friend void calculate_first_fixed_point(u &g);
 	
 	template<typename u, typename v, class w>
-	friend class CalculateEpsilonableContext;
-	template<typename u, typename v, class w>
 	friend void calculate_epsilonable(LL1Grammar<u,v,w> &g);
 
 	template<typename u, typename v, class w>
@@ -116,227 +120,82 @@ private:
 };
 
 
-template<typename term_t, typename uterm_t, class grammar_traits>
-class CalculateEpsilonableContext {
-	enum ExploreState: uint8_t {
+namespace epsilonable {
+	enum ExploreState{
 		No,
 		Yes,
 		Unknown,
-		Exploring,
 	};
-	using Grammar = LL1Grammar<term_t, uterm_t, grammar_traits>;
-	using symbol_t = typename Grammar::symbol_t;
-	using production_t = typename Grammar::production_t;
-	Grammar &g;
-
-	std::vector<production_t*> conts;
-	// template<typename node_type, int64_t VSize, int64_t ESize, bool undirected=true, typename id_type=uint32_t>
-	// struct Graph {
-	// 	using graph_t = Graph<node_type, VSize, ESize, undirected, id_type>;
-	// 	struct edge {
-	// 		id_type nx;
-	// 		node_type to;
-	// 	} e[ESize<<1];
-	// 	std::map<node_type, id_type> head;
-	// 	id_type mal;
-	// 	Graph() { init(); }
-	// 	Graph(int n) { init(n+1); }
-
-	// 	void addedge(const node_type &u, const node_type &v) {
-	// 		auto &edge = e[mal], &hu = head[u];
-	// 		edge.to = v;
-	// 		edge.nx = hu; hu = mal++;
-	// 	}
-	// 	struct partial_iterator {
-	// 		const graph_t &view;
-	// 		node_type u;
-	// 		partial_iterator(const graph_t &g, const node_type &u) :view(g), u(u) {};
-			
-	// 		struct iterator {
-	// 			const graph_t &view;
-	// 			id_type edge_id;
-	// 			iterator(const graph_t &g, id_type edge_id) :view(g), edge_id(edge_id) {}
-	// 			iterator &operator++() {
-	// 				edge_id = view.e[edge_id].nx;
-	// 				return *this;
-	// 			}
-	// 			iterator &operator++(int) {
-	// 				return operator++();
-	// 			}
-	// 			bool operator!=(const iterator &i) const {
-	// 				return edge_id != i;
-	// 			}
-	// 			bool operator==(const iterator &i) const {
-	// 				return edge_id == i;
-	// 			}
-	// 			const node_type &operator*() const {
-	// 				return view.e[edge_id].to;
-	// 			}
-	// 		};
-			
-	// 		iterator begin() {
-	// 			return iterator(view, view.head[u]);
-	// 		}
-	// 		iterator end() {
-	// 			return iterator(view, 0);
-	// 		}
-	// 	};
-	// 	partial_iterator at(const node_type &u) {
-	// 		return partial_iterator(g, u);
-	// 	}
-	// private:
-	// 	void init(int n = VSize) {
-	// 		#if DEBUG
-	// 		assert(("n < VSize", n < VSize));
-	// 		#endif
-	// 		head.clear();
-	// 		mal = 1;
-	// 	}
-	// };
-
-	// Graph<symbol_t, 200, 200 * 200> dep_graph;
-	// std::map<symbol, int> deg;
-	// std::queue<symbol> Q;
-
-	// void addedge(const production_t &prod) {
-	// 	deg[prod.lhs] += prod.rhs.size();
-	// 	for (auto &rsym: prod.rhs) {
-	// 		dep_graph.addedge(rsym, prod.lhs);
-	// 	}
-	// }
-public:
-	CalculateEpsilonableContext(Grammar &g) :g(g) /*, dep_graph()*/ {}
-	void work() {
-		for(auto &ss: g.sym_table) {
-			g.epsable[ss.second] = ss.second.is_unterm() ? ExploreState::Unknown: ExploreState::No;
-		}
-		for (auto &prod: g.prods) {
-			auto &sym = prod.lhs;
-			if (g.epsable[sym] != ExploreState::Unknown) {
-				continue;
-			}
-			if (prod.rhs.size() == 1 && prod.rhs[0] == grammar_traits::epsilon) {
-				g.epsable[sym] = ExploreState::Yes;
-				continue;
-			}
-			bool cont = true;
-			for (auto &rsym:prod.rhs) {
-				auto &rst = g.epsable[rsym];
-				if (rst == ExploreState::No) {
-					cont = false;
-				}
-			}
-			if (cont) {
-				conts.push_back(&prod);
-			}
-		}
-		bool changed, prod_eps;
-		do {
-			changed = false;
-			for (typename std::make_signed<size_t>::type
-				i = conts.size() - 1; i >= 0; i--) {
-				auto &prod = *(conts[i]);
-				if (g.epsable[prod.lhs] != ExploreState::Unknown) {
-					std::swap(conts[i], conts.back());
-					conts.pop_back();
-					continue;
-				}
-				prod_eps = true;
-				for (auto &rsym:prod.rhs) {
-					auto &rst = g.epsable[rsym];
-					if (rst == ExploreState::No) {
-						prod_eps = false;
-						g.epsable[prod.lhs] = ExploreState::No;
-						changed = true;
-						std::swap(conts[i], conts.back());
-						conts.pop_back();
-						break;
-					}
-					if (rst == ExploreState::Unknown) {
-						prod_eps = false;
-						break;
-					}
-				}
-				if (prod_eps) {
-					g.epsable[prod.lhs] = ExploreState::Yes;
-					changed = true;
-				}
-			}
-		} while(changed);
-		for (auto &ss : g.sym_table) {
-			if (g.epsable[ss.second] == ExploreState::Unknown) {
-				g.epsable[ss.second] = ExploreState::No;
-			}
-		}
-		for (auto &c : g.epsable) {
-			print::print(c.first);
-			print::print(' ');
-			print::print(int(c.second), true);
-		}
-	}
-private:
-	// uint8_t check(symbol_t &sym) {
-	// 	g.epsable[sym] = ExploreState::Exploring;
-	// 	print::print("next");
-	// 	print::print(sym, true);
-	// 	if (g.prods.size() == 0) {
-	// 		g.epsable[sym] = ExploreState::No;
-	// 		return;
-	// 	}
-	// 	for (auto &prod: g.prods) {
-	// 		if (prod.lhs != sym) {
-	// 			continue;
-	// 		}
-	// 		if (prod.rhs.size() == 1 && prod.rhs[0] == grammar_traits::epsilon) {
-	// 			g.epsable[sym] = ExploreState::Yes;
-	// 			return;
-	// 		} else {
-	// 			bool cont = true;
-	// 			for (auto &rsym:prod.rhs) {
-	// 				auto rst = g.epsable[rsym];
-	// 				if (rst == ExploreState::Unknown) {
-	// 					rst = check(rsym);
-	// 				}
-	// 				if (rst == ExploreState::No) {
-	// 					cont = false;
-	// 				}
-	// 			}
-	// 			if (cont) {
-	// 				addedge(rsym.prod);
-	// 			}
-	// 		}
-	// 	}
-	// 	g.epsable[sym] = ExploreState::Unknown;
-		
-	// 	// for (auto &prod: g.prods) {
-	// 	// 	if (prod.lhs != sym) {
-	// 	// 		continue;
-	// 	// 	}
-	// 	// 	for (auto &sym: prod.rhs) {
-	// 	// 		if (g.epsable[ss.second] == ExploreState::Unknown) {
-	// 	// 			dfs(ss.second);
-	// 	// 		}
-	// 	// 		// if (g.epsable[])
-	// 	// 	}
-	// 	// 	print::print("\n");
-	// 	// 	// if (!symset.first.is_unterm()) {
-	// 	// 	// 	continue;
-	// 	// 	// }
-	// 	// 	// auto &sym = symset.first;
-	// 	// 	// auto &set = *symset.second;
-	// 	// 	// size_t ls = set.size();
-	// 	// 	// for (auto) {
-				
-	// 	// 	// }
-	// 	// }
-	// }
-};
-
-
+}
 
 template<typename term_t, typename uterm_t, class grammar_traits>
 void calculate_epsilonable(LL1Grammar<term_t, uterm_t, grammar_traits> &g) {
-	CalculateEpsilonableContext(g).work();
+	using namespace epsilonable;
+	using Grammar = LL1Grammar<term_t, uterm_t, grammar_traits>;
+	using production_t = typename Grammar::production_t;
+	std::vector<production_t*> conts;
+	
+	for(auto &ss: g.sym_table) {
+		g.epsable[ss.second] = ss.second.is_unterm() ? ExploreState::Unknown: ExploreState::No;
+	}
+	for (auto &prod: g.prods) {
+		auto &sym = prod.lhs;
+		if (g.epsable[sym] != ExploreState::Unknown) {
+			continue;
+		}
+		if (prod.rhs.size() == 1 && prod.rhs[0] == grammar_traits::epsilon) {
+			g.epsable[sym] = ExploreState::Yes;
+			continue;
+		}
+		bool cont = true;
+		for (auto &rsym:prod.rhs) {
+			auto &rst = g.epsable[rsym];
+			if (rst == ExploreState::No) {
+				cont = false;
+			}
+		}
+		if (cont) {
+			conts.push_back(&prod);
+		}
+	}
+	bool changed, prod_eps;
+	do {
+		changed = false;
+		for (typename std::make_signed<size_t>::type
+			i = conts.size() - 1; i >= 0; i--) {
+			auto &prod = *(conts[i]);
+			if (g.epsable[prod.lhs] != ExploreState::Unknown) {
+				std::swap(conts[i], conts.back());
+				conts.pop_back();
+				continue;
+			}
+			prod_eps = true;
+			for (auto &rsym:prod.rhs) {
+				auto &rst = g.epsable[rsym];
+				if (rst == ExploreState::No) {
+					prod_eps = false;
+					g.epsable[prod.lhs] = ExploreState::No;
+					changed = true;
+					std::swap(conts[i], conts.back());
+					conts.pop_back();
+					break;
+				}
+				if (rst == ExploreState::Unknown) {
+					prod_eps = false;
+					break;
+				}
+			}
+			if (prod_eps) {
+				g.epsable[prod.lhs] = ExploreState::Yes;
+				changed = true;
+			}
+		}
+	} while(changed);
+	for (auto &ss : g.sym_table) {
+		if (g.epsable[ss.second] == ExploreState::Unknown) {
+			g.epsable[ss.second] = ExploreState::No;
+		}
+	}
 }
 
 
