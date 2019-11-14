@@ -84,9 +84,9 @@ struct Symbol {
 
 template<typename term_t, typename uterm_t>
 struct Node: public Symbol<term_t, uterm_t> {
-	using symbol = Symbol<term_t, uterm_t>;
-	Node(term_t x) :symbol(x) {}
-	Node(uterm_t x, bool y) :symbol(x, y) {}
+	using symbol_t = Symbol<term_t, uterm_t>;
+	Node(term_t x) :symbol_t(x) {}
+	Node(uterm_t x, bool y) :symbol_t(x, y) {}
 	
 	Node *&insert(Node * chx) {
 		ch.push_back(chx);
@@ -188,6 +188,7 @@ std::ostream &operator<<(std::ostream & os, Result<term_t, uterm_t> &res) {
 
 
 enum class UTerm: uint16_t {
+	S,
 	E,
 	ED,
 	T,
@@ -198,6 +199,9 @@ enum class UTerm: uint16_t {
 
 std::ostream &operator<<(std::ostream &os, UTerm x) {
 	switch (x) {
+		case UTerm::S:
+			os << "S";
+			break;
 		case UTerm::E:
 			os << "E";
 			break;
@@ -243,7 +247,7 @@ struct Production {
 template<typename token_t>
 std::ostream &operator<<(std::ostream &os, Production<token_t> &x) {
 	os << x.lhs << " -> ";
-	print::print<decltype(x.rhs)>(x.rhs);
+	print::print(x.rhs);
 	return os;
 }
 
@@ -254,10 +258,11 @@ class Model {
 	public:
 	using string = std::string;
 	using strvec = std::vector<string>;
-	using symbol = Symbol<term_t, uterm_t>;
+	using symbol_t = Symbol<term_t, uterm_t>;
 	using model = Model<term_t, uterm_t>;
-	std::map<string, symbol> sym_table;
-	std::vector<Production<symbol>> prods;
+	std::map<string, symbol_t> sym_table;
+	std::vector<Production<symbol_t>> prods;
+	symbol_t begin_symbol;
 	Model() {}
 	bool is_error() { return err.length() != 0; }
 	const string &error() { return err; }
@@ -275,7 +280,7 @@ class Model {
 		if (slice.size() != 2) {
 			throw std::invalid_argument("must in form of A = B, not " + s);
 		}
-		sym_table[slice[0]] = symbol(
+		sym_table[slice[0]] = symbol_t(
 			static_cast<typename std::conditional<ut, uterm_t, term_t>::type>(
 				std::stoi(slice[1])), ut);
 	}
@@ -308,11 +313,11 @@ class Model {
 	}
 
 	void prod_from_pair(string &raw_lhs, const string &raw_rhs) {
-		symbol lhs = sym_table.at(salg::trim_space<char>(raw_lhs));
+		symbol_t lhs = sym_table.at(salg::trim_space<char>(raw_lhs));
 		strvec slice;
-		std::vector<symbol> rhs;
+		std::vector<symbol_t> rhs;
 		//todo
-		prods.emplace_back(std::move(Production<symbol>(lhs, functional::map_st(
+		prods.emplace_back(std::move(Production<symbol_t>(lhs, functional::map_st(
 			functional::map(salg::split_space<char>(raw_rhs, slice), salg::trim_space<char>),
 			rhs, [&](const string &r) {return sym_table.at(r);}
 		))));
@@ -337,40 +342,48 @@ Model<term_t, uterm_t> *G(std::istream &in) {
 	std::string line;
 	std::vector<std::string> atos;
 	auto model = new Model<term_t, uterm_t>();
-	while(salg::get_till<char>(in, line)) {
-		if (line.empty()) continue;
-
-		if (line[0] == '#') {
-			continue;
-		} else if (line[0] == 'P') {
-			auto pos = line.find('{');
-			if (pos == std::string::npos) {
-				return model->error("invalid statement: miss {");
-			}
-			salg::get_till_nc(in, line = line.substr(pos+1), '}');
-			model->prods_from_string(line);
-		} else if (line.length() > 5) {
-			if (!strncmp(line.c_str(), "uter ", 5)) {
-				if CXX17_STATIC_CONDITION (model_t::symbol::uterm_v) {
-					model->sym_from_string_true(line);
-				} else {
-					model->sym_from_string_false(line);
+	try {
+		while(salg::get_till<char>(in, line)) {
+			if (salg::trim_space<char>(line).empty()) continue;
+			if (line[0] == '#') {
+				continue;
+			} else if (line[0] == 'P') {
+				auto pos = line.find('{');
+				if (pos == std::string::npos) {
+					return model->error("invalid statement: miss {");
 				}
-			} else if (!strncmp(line.c_str(), "term ", 5)) {
-				if CXX17_STATIC_CONDITION (model_t::symbol::term_v) {
-					model->sym_from_string_true(line);
+				salg::get_till_nc(in, line = line.substr(pos+1), '}');
+				model->prods_from_string(line);
+			} else if (line.length() > 5) {
+				if (!strncmp(line.c_str(), "uter ", 5)) {
+					if CXX17_STATIC_CONDITION (model_t::symbol_t::uterm_v) {
+						model->sym_from_string_true(line);
+					} else {
+						model->sym_from_string_false(line);
+					}
+				} else if (!strncmp(line.c_str(), "term ", 5)) {
+					if CXX17_STATIC_CONDITION (model_t::symbol_t::term_v) {
+						model->sym_from_string_true(line);
+					} else {
+						model->sym_from_string_false(line);
+					}
+				} else if (!strncmp(line.c_str(), "begi ", 5)) {
+					model->begin_symbol = model->sym_table.at(salg::trim_space<char>(line = line.substr(5)));
 				} else {
-					model->sym_from_string_false(line);
+					return model->error("invalid statement: either uter or term at beginning");
 				}
 			} else {
-				return model->error("invalid statement: either uter or term at beginning");
+				return model->error("invalid statement");
 			}
-		} else {
-			return model->error("invalid statement");
+			line.clear();
 		}
+	} catch(std::exception &e) {
+		return model->error(e.what());
 	}
-	print::print<decltype(model->sym_table)>(model->sym_table, true);
-	print::print<decltype(model->prods)>(model->prods, true);
+	print::print(model->sym_table, true);
+	print::print(model->prods, true);
+	std::cout << "? ";
+	print::print(model->begin_symbol, true);
 	return model;
 }
 
@@ -385,10 +398,10 @@ Model<term_t, uterm_t> *G(const char *file_name){
 template<class Grammar, class grammar_traits>
 void calculate_first_fixed_point(Grammar &g) {
 
-	using symbol = typename Grammar::symbol;
+	using symbol_t = typename Grammar::symbol_t;
 	for (auto &x: g.sym_table) {
 		auto &sym = x.second;
-		auto s = new std::set<symbol>();
+		auto s = new std::set<symbol_t>();
 		if (!sym.is_unterm()) {
 			s->insert(sym);
 		}
@@ -398,13 +411,16 @@ void calculate_first_fixed_point(Grammar &g) {
 	bool changed;
 	do {
 		changed  = false;
-		for (auto &x: g.first) {
-			auto &sym = x.first;
-			auto &set = *x.second;
+		for (auto &symset: g.first) {
+			if (!symset.first.is_unterm()) {
+				continue;
+			}
+			auto &sym = symset.first;
+			auto &set = *symset.second;
 			size_t ls = set.size();
 			// print::print("testing ");
 			// print::print(&set); print::print(" ");
-			// print::print(x.second); print::print(" "); print::print(sym); print::print(" ");
+			// print::print(symset.second); print::print(" "); print::print(sym); print::print(" ");
 			// print::print(set, true);
 			// lower_bound or sort() && iter will be better
 			for (auto &prod: g.prods) {

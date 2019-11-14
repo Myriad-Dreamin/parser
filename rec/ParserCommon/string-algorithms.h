@@ -88,13 +88,13 @@ namespace salg {
 		typename traits<stream_t>::istream &in,
 		typename traits<stream_t>::string &res,
 		const stream_t line_end=traits<stream_t>::line_end) {
-		for (stream_t s;;) {
-			in.get(s);
-			if (s == traits<stream_t>::stp || s == line_end) {
-				return res.size() != 0;
+		for (stream_t s;in.get(s);) {
+			if (s == line_end) {
+				return true;
 			}
 			res.push_back(s);
 		}
+		return res.size() != 0;
 	}
 
 	template<typename stream_t>
