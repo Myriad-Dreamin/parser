@@ -30,8 +30,17 @@
 namespace parse {
 namespace action_space {
 	struct action {};
-	struct reduce_action: public action { int rn; };
-	struct shift_action: public action { int sn; };
+	template<typename symbol_t>
+	struct replace_action: public action {
+		const std::vector<symbol_t> &reduce;
+		const std::vector<symbol_t> &produce;
+	};
+	template<typename symbol_t>
+	struct replace_action1: public action {
+		const symbol_t &reduce;
+		const std::vector<symbol_t> &produce;
+	};
+	struct shift_action: public action { int shift_number; };
 	struct error_action: public action { const std::string error_info; };
 }
 
@@ -53,14 +62,35 @@ public:
 	using grammar_t = BasicLLGrammar<grammar_traits>;
 
 protected:
-	container table;
-	void init_container() throw(InitFailed) {
-
-	}
+	container &table;
+	BasicLLGrammar(container &table) : table(table) {}
 public:
-	void init(){};
+	void reset(){};
 	action_space::action act(const symbol_t &s){};
 };
+
+template<class Grammar, typename grammar_traits>
+void get_first1_nc(
+	Grammar &g,
+	typename grammar_traits::production_t &prod,
+	std::set<typename grammar_traits::symbol_t> &res) {
+	for(auto &sym :prod.rhs) {
+		res.merge(*first[sym]);
+		if (!epsable(sym)) {
+			return;
+		}
+	}
+	res.merge(*follow[prod.lhs]);
+}
+
+template<class Grammar, typename grammar_traits>
+void get_first1(
+	Grammar &g,
+	typename grammar_traits::production_t &prod,
+	std::set<typename grammar_traits::symbol_t> &res) {
+	res.clear();
+	get_first1_nc(first, sequence, res);
+}
 
 
 template<class grammar_traits, class Policy=BasicLLGrammar<grammar_traits>>
@@ -81,11 +111,14 @@ private:
 	std::map<symbol_t, std::set<symbol_t>* > first;
 	std::map<symbol_t, std::set<symbol_t>* > follow;
 	std::map<symbol_t, uint8_t> epsable;
+
+	std::map<symbol_t, action_space::action*> table;
 public:
 	LL1Grammar(model_t &model) :
 		first(),
 		follow(),
 		epsable(),
+		table(),
 		sym_table(model.sym_table),
 		prods(model.prods),
 		begin_symbol(model.begin_symbol) { init(); }
@@ -94,6 +127,7 @@ public:
 		first(),
 		follow(),
 		epsable(),
+		table(),
 		sym_table(model->sym_table),
 		prods(model->prods),
 		begin_symbol(model->begin_symbol) { init(); }
@@ -104,12 +138,25 @@ public:
 		first(),
 		follow(),
 		epsable(),
+		table(),
 		sym_table(sym_table),
 		prods(prods),
 		begin_symbol(begin_symbol) { init(); }
 
 	virtual ~LL1Grammar() {
 		for (auto &x: first) {
+			delete x.second;
+			x.second = nullptr;
+		}
+		for (auto &x: follow) {
+			delete x.second;
+			x.second = nullptr;
+		}
+		for (auto &x: epsable) {
+			delete x.second;
+			x.second = nullptr;
+		}
+		for (auto &x: table) {
 			delete x.second;
 			x.second = nullptr;
 		}
@@ -138,6 +185,16 @@ private:
 		}
 		print::print("begin symbol ");
 		print::print(this->begin_symbol, true);
+
+		// check()
+		std::set<symbol_t> mset;
+		for (auto prod: prods) {
+			get_first1(*this, prod, mset);
+			print::print(prod);
+			print::print(' ');
+			print::print(mset);
+		}
+
 	}
 
 	template<class u, class v>
@@ -148,7 +205,6 @@ private:
 
 	template<class u, class v>
 	friend void calculate_follow_fixed_point(u &g);
-
 };
 
 
