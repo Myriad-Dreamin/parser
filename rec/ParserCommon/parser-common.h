@@ -40,6 +40,12 @@ struct Symbol {
 		// std::cout << "construct" << std::endl;
 	}
 
+	Symbol(const Symbol<term_t, uterm_t> &x) {
+		data = x.data;
+		ut = x.ut;
+		// std::cout << "construct" << std::endl;
+	}
+
 	template<typename T>
 	Symbol(T x, bool utrm) {
 		if (utrm) {
@@ -91,11 +97,12 @@ struct Symbol {
 
 
 template<typename term_t, typename uterm_t>
-struct Node: public Symbol<term_t, uterm_t> {
+struct Node {
 	using symbol_t = Symbol<term_t, uterm_t>;
-	Node(term_t x) :symbol_t(x) {}
-	Node(uterm_t x, bool y) :symbol_t(x, y) {}
-	
+	symbol_t symbol;
+	Node(term_t x) :symbol(x) {}
+	Node(uterm_t x, bool y) :symbol(x, y) {}
+	Node(const symbol_t &r) : symbol(r) {}
 	Node *&insert(Node * chx) {
 		ch.push_back(chx);
 		return ch.back();
@@ -167,14 +174,14 @@ struct Result {
 		nodes.clear();
 		rt = nullptr;
 	}
-protected:
-	std::vector<node_t*> nodes;
+
 	template<typename T>
 	node_t *alloc(T x) {
 		node_t *n = new node_t(x);
 		nodes.push_back(n);
 		return n;
 	}
+
 	template<typename T>
 	node_t *alloc(T x, bool y) {
 		node_t *n = new node_t(x, y);
@@ -182,6 +189,10 @@ protected:
 		return n;
 	}
 
+
+protected:
+	std::vector<node_t*> nodes;
+	
 	template<typename u, typename v>
 	friend std::ostream &operator<<(std::ostream & os, Result<u, v> &res);
 };
@@ -399,7 +410,9 @@ Model<term_t, uterm_t> *G(std::istream &in) {
 template<typename term_t=int32_t, typename uterm_t=int32_t>
 Model<term_t, uterm_t> *G(const char *file_name){
 	auto f = std::fstream(file_name, std::ios::in);
-	return G<term_t, uterm_t>(f);
+	auto g = G<term_t, uterm_t>(f);
+	f.close();
+	return g;
 }	
 
 
@@ -417,6 +430,8 @@ struct basic_grammar_traits {
 	using strvec = typename model_t::strvec;
 	using symbol_t = typename model_t::symbol_t;
 	using production_t = Production<symbol_t>;
+	using node_t = Node<term_t, uterm_t>;
+	static constexpr auto eof = m_traits::eof;
 	static constexpr auto epsilon = m_traits::epsilon;
 	static constexpr auto dollar = m_traits::dollar;
 };
