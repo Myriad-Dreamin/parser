@@ -15,20 +15,50 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="parser-common.h">
-      <Filter>源文件</Filter>
+    <ClInclude Include="symbol.h">
+      <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="functional.h">
-      <Filter>源文件</Filter>
+    <ClInclude Include="ast-node.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="result.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="uterm.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="production.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="model.h">
+      <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="iterable.h">
-      <Filter>源文件</Filter>
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="functional\functional.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="string-algorithm\string-algorithm.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="cxx17.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="grammar-traits.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="calcaulation.h">
+      <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="print.h">
-      <Filter>源文件</Filter>
+      <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="string-algorithms.h">
-      <Filter>源文件</Filter>
+    <ClInclude Include="action.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="parser-common.h">
+      <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

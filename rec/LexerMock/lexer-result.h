@@ -3,9 +3,6 @@
 #include <stdint.h>
 #include <vector>
 
-template<typename T>
-const char *stringify(T x);
-
 
 enum class Token: uint16_t {
 	Add,

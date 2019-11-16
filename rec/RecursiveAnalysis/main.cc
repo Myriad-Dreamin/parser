@@ -22,7 +22,7 @@ namespace parse {
 	class RecursiveAParser {
 		using istream = Source;
 		using result_t = Result<token_t, UTerm>;
-		using node_t = Node<token_t, UTerm>;
+		using node_t = ASTNode<token_t, UTerm>;
 		istream &ref;
 		token_t token;
 
