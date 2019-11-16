@@ -79,7 +79,8 @@ namespace salg {
 		std::string_view sw(sep);
 		return split<char>(s, sw, res);
 		#else
-		return split(s, sep, res);
+		std::string sw(sep);
+		return split(s, sw, res);
 		#endif
 	}
 
@@ -133,7 +134,7 @@ namespace salg {
 	typename traits<stream_t>::string &trim_space(
 		typename traits<stream_t>::string &str
 	) {
-		return trim<stream_t>(str, std::isspace);
+		return trim<stream_t>(str, isspace);
 	}
 
 	template<typename stream_t>

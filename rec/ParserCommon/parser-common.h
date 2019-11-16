@@ -1,5 +1,6 @@
 #pragma once
 
+#include <set>
 #include <iostream>
 #include "print.h"
 #include "string-algorithms.h"
@@ -159,8 +160,6 @@ std::ostream &operator<<(std::ostream &os, ResultCode x) {
 
 template<typename term_t, typename uterm_t>
 struct Result {
-	template<typename parser_term_t, class Source, class TokenTable>
-	friend class Parser;
 	using node_t = Node<term_t, uterm_t>;
 	node_t *rt;
 	ResultCode code;

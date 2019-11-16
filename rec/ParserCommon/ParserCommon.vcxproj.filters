@@ -18,5 +18,17 @@
     <ClInclude Include="parser-common.h">
       <Filter>源文件</Filter>
     </ClInclude>
+    <ClInclude Include="functional.h">
+      <Filter>源文件</Filter>
+    </ClInclude>
+    <ClInclude Include="iterable.h">
+      <Filter>源文件</Filter>
+    </ClInclude>
+    <ClInclude Include="print.h">
+      <Filter>源文件</Filter>
+    </ClInclude>
+    <ClInclude Include="string-algorithms.h">
+      <Filter>源文件</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

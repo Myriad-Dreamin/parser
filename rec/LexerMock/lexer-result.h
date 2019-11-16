@@ -63,7 +63,7 @@ std::ostream &operator<<(std::ostream &os, Token x) {
 struct LexerResult {
 	using vector = std::vector<Token>;
 	vector tokens;
-	int64_t ofs;
+	size_t ofs;
 	LexerResult() {
 		ofs = 0;
 	}
@@ -105,7 +105,7 @@ std::vector<Token> &fromIstream(std::istream &in) {
 			tokens.push_back(ref_map.at(x));
 		}
 	} catch (std::out_of_range &oc) {
-		throw std::runtime_error("invalid mock flow");
+		throw std::runtime_error(std::string("invalid mock flow") + oc.what());
 	}
 	return tokens;
 }

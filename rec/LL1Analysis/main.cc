@@ -7,6 +7,7 @@
 #include <string>
 #include <cstring>
 #include <fstream>
+#include <sstream>
 #include <type_traits>
 #include <regex>
 #include <queue>
@@ -409,6 +410,7 @@ int main() {
 	f.close();
 
 	auto result = grammar.work(flow);
+
 	std::cout << *result << std::endl;
 	delete result;
 	delete model;
