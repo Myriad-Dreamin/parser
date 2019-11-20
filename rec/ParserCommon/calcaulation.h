@@ -184,4 +184,29 @@ namespace parse {
 	}
 
 
+
+	template<class Grammar, typename grammar_traits>
+	void get_first1_nc(
+		Grammar &g,
+		typename grammar_traits::production_t &prod,
+		std::set<typename grammar_traits::symbol_t> &res) {
+		for(auto &sym :prod.rhs) {
+			res.insert(g.first[sym]->begin(), g.first[sym]->end());
+			if (!g.epsable[sym]) {
+				return;
+			}
+		}
+		res.insert(g.follow[prod.lhs]->begin(), g.follow[prod.lhs]->end());
+	}
+
+	template<class Grammar, typename grammar_traits>
+	void get_first1(
+		Grammar &g,
+		typename grammar_traits::production_t &prod,
+		std::set<typename grammar_traits::symbol_t> &res) {
+		res.clear();
+		get_first1_nc<Grammar, grammar_traits>(g, prod, res);
+	}
+
+
 }

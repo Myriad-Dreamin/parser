@@ -64,10 +64,18 @@ namespace action_space {
 			return os << shift_number;
 		}
 	};
+	
 	struct error_action: public action {
 		const std::string error_info;
 		virtual std::ostream &output(std::ostream &os) override {
 			return os << error_info;
+		}
+	};
+
+	struct synch_action: public action {
+		const std::string synch_info;
+		virtual std::ostream &output(std::ostream &os) override {
+			return os << synch_info;
 		}
 	};
 }

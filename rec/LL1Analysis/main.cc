@@ -107,6 +107,72 @@ public:
 						if (d1 != nullptr) {
 							auto &info = *d1;
 							error_count++;
+						} else {
+							auto d2 = dynamic_cast<action_space::synch_action*>(acmp[next_symbol]);
+							if (d2 != nullptr) {
+								auto &info = *d2;
+								stack.pop();
+								error_count++;
+							}
+						}
+					}
+				} else {
+					read(is, next_symbol);
+					error_count++;
+				}
+			} else {
+				if (next_symbol != state->symbol) {
+					error_count++;
+				} else {
+					stack.pop();
+				}
+				read(is, next_symbol);
+			}
+		}
+		return result;
+	}
+
+	template<class IStream>
+	result_t *work2(IStream &is){
+		reset();
+		auto result = new result_t();
+		auto rt = result->alloc(begin_symbol);
+		result->rt = rt;
+		stack.push(rt);
+		read(is, next_symbol);
+		while(stack.size()) {
+			if (next_symbol == grammar_traits::eof) {
+				return result;
+			}
+			auto state = stack.top();
+			if (state->symbol.is_unterm()) {
+				auto &acmp = *(*table)[state->symbol];
+				if (acmp.count(next_symbol)) {
+					auto d0 = dynamic_cast<action_space::replace_action1<symbol_t>*>(acmp[next_symbol]);
+					if (d0 != nullptr) {
+						auto &prod = *d0;
+						if(state->symbol != prod.reduce) {
+							if (follow[state->symbol]->count(next_symbol)) {
+								stack.pop();
+							} else {
+								read(is, next_symbol);
+							}
+							error_count++;
+						}
+						else {
+							stack.pop();
+							for (auto &sym: prod.produce) {
+								state->insert(result->alloc(sym));	
+							}
+							for (auto iter = state->ch.rbegin(); iter != state->ch.rend(); iter++) {
+								stack.push(*iter);
+							}
+						}
+					} else {
+						auto d1 = dynamic_cast<action_space::error_action*>(acmp[next_symbol]);
+						if (d1 != nullptr) {
+							auto &info = *d1;
+							error_count++;
 						}
 					}
 				} else {
@@ -125,29 +191,6 @@ public:
 		return result;
 	}
 };
-
-template<class Grammar, typename grammar_traits>
-void get_first1_nc(
-	Grammar &g,
-	typename grammar_traits::production_t &prod,
-	std::set<typename grammar_traits::symbol_t> &res) {
-	for(auto &sym :prod.rhs) {
-		res.insert(g.first[sym]->begin(), g.first[sym]->end());
-		if (!g.epsable[sym]) {
-			return;
-		}
-	}
-	res.insert(g.follow[prod.lhs]->begin(), g.follow[prod.lhs]->end());
-}
-
-template<class Grammar, typename grammar_traits>
-void get_first1(
-	Grammar &g,
-	typename grammar_traits::production_t &prod,
-	std::set<typename grammar_traits::symbol_t> &res) {
-	res.clear();
-	get_first1_nc<Grammar, grammar_traits>(g, prod, res);
-}
 
 
 template<class grammar_traits, class Policy=BasicLLGrammar<grammar_traits>>
