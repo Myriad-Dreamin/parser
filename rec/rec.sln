@@ -13,6 +13,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "LexerMock", "LexerMock\Lexe
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ParserCommon", "ParserCommon\ParserCommon.vcxproj", "{2D59DAE8-4291-4DC0-BF49-AA509B75A950}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "LR1Analysis", "LR1Analysis\LR1Analysis.vcxproj", "{A3EB666D-F42C-45D5-9089-70DEA2A2EA17}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -53,6 +55,14 @@ Global
 		{2D59DAE8-4291-4DC0-BF49-AA509B75A950}.Release|x64.Build.0 = Release|x64
 		{2D59DAE8-4291-4DC0-BF49-AA509B75A950}.Release|x86.ActiveCfg = Release|Win32
 		{2D59DAE8-4291-4DC0-BF49-AA509B75A950}.Release|x86.Build.0 = Release|Win32
+		{A3EB666D-F42C-45D5-9089-70DEA2A2EA17}.Debug|x64.ActiveCfg = Debug|x64
+		{A3EB666D-F42C-45D5-9089-70DEA2A2EA17}.Debug|x64.Build.0 = Debug|x64
+		{A3EB666D-F42C-45D5-9089-70DEA2A2EA17}.Debug|x86.ActiveCfg = Debug|Win32
+		{A3EB666D-F42C-45D5-9089-70DEA2A2EA17}.Debug|x86.Build.0 = Debug|Win32
+		{A3EB666D-F42C-45D5-9089-70DEA2A2EA17}.Release|x64.ActiveCfg = Release|x64
+		{A3EB666D-F42C-45D5-9089-70DEA2A2EA17}.Release|x64.Build.0 = Release|x64
+		{A3EB666D-F42C-45D5-9089-70DEA2A2EA17}.Release|x86.ActiveCfg = Release|Win32
+		{A3EB666D-F42C-45D5-9089-70DEA2A2EA17}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -61,6 +71,7 @@ Global
 		{0DF94C35-8A0C-4426-B181-4EE358120562} = {61A22751-E548-44F3-A843-6BB873BAAAFC}
 		{B202FC6F-991D-4FE9-95D7-AFE364959B30} = {61A22751-E548-44F3-A843-6BB873BAAAFC}
 		{57E03B5A-063F-4800-B29F-102F9324BA57} = {61A22751-E548-44F3-A843-6BB873BAAAFC}
+		{A3EB666D-F42C-45D5-9089-70DEA2A2EA17} = {61A22751-E548-44F3-A843-6BB873BAAAFC}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {15804324-9E3B-42DA-870F-0119DD512C15}
