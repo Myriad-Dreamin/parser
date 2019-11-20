@@ -76,7 +76,7 @@ namespace salg {
 		std::vector<std::string> &res
 	) {
 		#if __cplusplus >= 201703L
-		return split<char>(s, std::string_view(sw), res);
+		return split<char>(s, std::string_view(sep), res);
 		#else
 		return split(s, std::string(sep), res);
 		#endif

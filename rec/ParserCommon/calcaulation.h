@@ -1,5 +1,7 @@
 #pragma once
 
+#include <set>
+#include "iterable.h"
 
 namespace parse {
 
@@ -183,6 +185,27 @@ namespace parse {
 		} while (changed);
 	}
 
+	template<class Grammar, typename grammar_traits, class Iterable>
+	typename std::enable_if<is_iterable::is_iterable<Iterable>::value>::type get_first1_nc(
+		Grammar &g,
+		Iterable &sequence,
+		std::set<typename grammar_traits::symbol_t> &res) {
+		for (auto &sym : sequence) {
+			res.insert(g.first[sym]->begin(), g.first[sym]->end());
+			if (!g.epsable[sym]) {
+				return;
+			}
+		}
+	}
+
+	template<class Grammar, typename grammar_traits, class Iterable>
+	typename std::enable_if<is_iterable::is_iterable<Iterable>::value>::type get_first1(
+		Grammar &g,
+		Iterable &sequence,
+		std::set<typename grammar_traits::symbol_t> &res) {
+		res.clear();
+		get_first1_nc<Grammar, grammar_traits>(g, sequence, res);
+	}
 
 
 	template<class Grammar, typename grammar_traits>
@@ -190,7 +213,7 @@ namespace parse {
 		Grammar &g,
 		typename grammar_traits::production_t &prod,
 		std::set<typename grammar_traits::symbol_t> &res) {
-		for(auto &sym :prod.rhs) {
+		for (auto &sym : prod.rhs) {
 			res.insert(g.first[sym]->begin(), g.first[sym]->end());
 			if (!g.epsable[sym]) {
 				return;
@@ -206,6 +229,29 @@ namespace parse {
 		std::set<typename grammar_traits::symbol_t> &res) {
 		res.clear();
 		get_first1_nc<Grammar, grammar_traits>(g, prod, res);
+	}
+
+	
+	template<class Grammar>
+	void delete_first_symbols(Grammar &g) {
+		for (auto &x : g.first) {
+			delete x.second;
+			x.second = nullptr;
+		}
+	}
+
+
+	template<class Grammar>
+	void delete_follow_symbols(Grammar &g) {
+		for (auto &x : g.follow) {
+			delete x.second;
+			x.second = nullptr;
+		}
+	}
+
+
+	template<class Grammar>
+	void delete_epsable_symbols(Grammar &g) {
 	}
 
 

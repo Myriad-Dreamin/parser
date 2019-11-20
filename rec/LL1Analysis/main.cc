@@ -243,16 +243,11 @@ public:
 		sym_table(sym_table),
 		prods(prods),
 		begin_symbol(begin_symbol) { init(); }
-
+	
 	virtual ~LL1Grammar() {
-		for (auto &x: first) {
-			delete x.second;
-			x.second = nullptr;
-		}
-		for (auto &x: follow) {
-			delete x.second;
-			x.second = nullptr;
-		}
+		delete_first_symbols(*this);
+		delete_follow_symbols(*this);
+		delete_epsable_symbols(*this);
 		for (auto &x: table) {
 			for (auto &y : *x.second) {
 				delete y.second;
@@ -295,18 +290,26 @@ private:
 		print::print("begin symbol ");
 		print::print(this->begin_symbol, true);
 		
+		build();
+
+		Policy::table = &table;
+		Policy::begin_symbol = begin_symbol;
+		Policy::follow = follow;
+	}
+
+	void build() {
 		for (auto &c : sym_table) {
 			table[c.second] = new action_map();
 		}
 		// check()
 		std::set<symbol_t> mset;
-		for (auto &prod: prods) {
+		for (auto &prod : prods) {
 			get_first1<grammar_t, grammar_traits>(*this, prod, mset);
 			print::print(prod);
 			print::print(' ');
 			print::print(mset, true);
 			auto &acmp = *table[prod.lhs];
-			for(auto &sym : mset) {
+			for (auto &sym : mset) {
 				if (acmp.count(sym)) {
 					std::stringstream s("conflct ");
 					print::print("prod:", false, s);
@@ -326,20 +329,17 @@ private:
 			print::print(' ');
 			print::print(*c.second, true);
 		}
-
-		Policy::table = &table;
-		Policy::begin_symbol = begin_symbol;
-		Policy::follow = follow;
 	}
 
 	template<class u, class v>
 	friend void calculate_first_fixed_point(u &g);
-	
+
 	template<class u, class w>
 	friend void calculate_epsilonable(u &g);
 
 	template<class u, class v>
 	friend void calculate_follow_fixed_point(u &g);
+
 
 	template<class u, class v>
 	friend void get_first1(u &g, typename v::production_t &prod,
@@ -348,6 +348,13 @@ private:
 	template<class u, class v>
 	friend void get_first1_nc(u &g, typename v::production_t &prod,
 		std::set<typename v::symbol_t> &res);
+
+	template<class u>
+	friend void delete_first_symbols(u &g);
+	template<class u>
+	friend void delete_follow_symbols(u &g);
+	template<class u>
+	friend void delete_epsable_symbols(u &g);
 };
 
 
