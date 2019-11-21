@@ -68,7 +68,6 @@ template<class grammar_traits,
 			}
 		}
 
-		action_space::action *act(const symbol_t &s) {};
 		void reset() {
 			error_count = 0;
 			while (stack.size()) {
