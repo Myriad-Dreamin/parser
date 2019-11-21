@@ -234,7 +234,11 @@ struct __combine {
 	};
 
 	iterator begin() {
-		return iterator(*this, ls.begin(), false);
+		auto iter = ls.begin();
+		if (iter == ls.end()) {
+			return iterator(*this, rs.begin(), true);
+		}
+		return iterator(*this, iter, false);
 	}
 
 	iterator end() {
@@ -283,6 +287,7 @@ public:
 	using production_t = typename grammar_traits::production_t;
 
 	using grammar_t = LR1Grammar<grammar_traits>;
+	using state_id = int32_t;
 private:
 	std::map<string, symbol_t> &sym_table;
 	std::vector<production_t> &prods;
@@ -292,7 +297,7 @@ private:
 	std::map<symbol_t, uint8_t> epsable;
 
 	using action_map = std::map<symbol_t, action_space::action*>;
-	std::map<symbol_t, action_map*> table;
+	std::map<state_id, action_map*> table;
 public:
 	LR1Grammar(model_t &model):
 		first(),
@@ -358,7 +363,6 @@ private:
 	using item_t = std::pair<std::pair<int, int>, symbol_t>;
 	std::vector<item_t> items;
 
-	using state_id = int32_t;
 	using hashed_item_t = int64_t;
 	using state_set = std::set<item_t>;
 	std::vector<state_set*> state;
@@ -373,6 +377,8 @@ private:
 		return *state.back();
 	}
 
+	
+
 	void build() {
 		automa.init(499);
 		seed = std::chrono::system_clock::now().time_since_epoch().count() % mod;
@@ -380,17 +386,20 @@ private:
 		bool proceed = false;
 		for (int i = prods.size() - 1; i >= 0;i--) {
 			auto &prod = prods[i];
+			for (int j = 0; j < prod.rhs.size(); j++) {
+				if (prod.rhs[j] == grammar_traits::epsilon) {
+					for (int k = j + 1; k < prod.rhs.size(); k++) {
+						prod.rhs[k - 1] = prod.rhs[k];
+					}
+					prod.rhs.pop_back();
+				}
+			}
 			if (prod.lhs == begin_symbol) {
 				if (proceed) {
 					throw std::invalid_argument("must with only one production reduce to begin symbol");
 				}
 				proceed = true;
-				auto base_item = std::make_pair(i, 0);
-				std::set<symbol_t> fset;
-				get_first1<grammar_t, grammar_traits, decltype(prod.rhs)>(*this, prod.rhs, fset);
-				for (auto &sym: fset) {
-					mset.insert(std::make_pair(base_item, sym));
-				}
+				mset.insert(item_t{{i, 0}, grammar_traits::dollar});
 			}
 		}
 
@@ -407,6 +416,28 @@ private:
 		}
 		for (auto &st : state) {
 			print::print(*st, true);
+		}
+
+		for (int i = 0; i < state.size(); i++) {
+			auto acmp = new action_map();
+			table[i] = acmp;
+			for (auto j : automa.at_e(i)) {
+				auto &sym = j.w;
+				if (sym.is_unterm()) {
+					(*acmp)[sym] = new action_space::goto_action<state_id>(j.to);
+				} else {
+					(*acmp)[sym] = new action_space::shift_action<state_id>(j.to);
+				}
+			}
+
+			for (auto &item : *state[i]) {
+				if (item.first.second == prods[item.first.first].rhs.size()) {
+					(*acmp)[item.second] = new action_space::replace_action1<symbol_t>(prods[item.first.first].lhs, prods[item.first.first].rhs);
+				}
+			}
+		}
+
+		for (auto &st : state) {
 			delete st;
 		}
 	}
@@ -476,9 +507,11 @@ private:
 					auto ritem = std::make_pair(item, asym);
 					if (!mset.count(ritem)) {
 						mset.insert(ritem);
-						auto &sym = prod.rhs[0];
-						if (sym.is_unterm()) {
-							extend_to(mset, lookahead, sym);
+						if (prod.rhs.size()) {
+							auto &sym = prod.rhs[0];
+							if (sym.is_unterm()) {
+								extend_to(mset, lookahead, sym);
+							}
 						}
 					}
 				}
@@ -661,7 +694,6 @@ struct grammar_traits_example {
 };
 
 int main() {
-
 	auto model = parse::G<Token, parse::UTerm>("grammar.gr");
 	if (model->is_error()) {
 		std::cout << model->error() << std::endl;

@@ -268,6 +268,19 @@ private:
 		calculate_first_fixed_point<grammar_t, grammar_traits>(*this);
 		calculate_epsilonable<grammar_t, grammar_traits>(*this);
 		calculate_follow_fixed_point<grammar_t, grammar_traits>(*this);
+
+		for (int i = prods.size() - 1; i >= 0; i--) {
+			auto &prod = prods[i];
+			for (int j = 0; j < prod.rhs.size(); j++) {
+				if (prod.rhs[j] == grammar_traits::epsilon) {
+					for (int k = j + 1; k < prod.rhs.size(); k++) {
+						prod.rhs[k - 1] = prod.rhs[k];
+					}
+					prod.rhs.pop_back();
+				}
+			}
+		}
+
 		for (auto &c : first) {
 			print::print(c.first);
 			print::print(' ');

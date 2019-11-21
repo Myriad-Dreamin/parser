@@ -58,10 +58,12 @@ namespace action_space {
 		return os;
 	}
 
+	template<typename state_id>
 	struct shift_action: public action {
-		int shift_number;
+		const state_id to_state;
+		shift_action(const state_id &id):to_state(id) {}
 		virtual std::ostream &output(std::ostream &os) override {
-			return os << shift_number;
+			return os << to_state;
 		}
 	};
 	
@@ -76,6 +78,15 @@ namespace action_space {
 		const std::string synch_info;
 		virtual std::ostream &output(std::ostream &os) override {
 			return os << synch_info;
+		}
+	};
+
+	template<typename state_id>
+	struct goto_action: public action {
+		const state_id to_state;
+		goto_action(const state_id &id) :to_state(id) {}
+		virtual std::ostream &output(std::ostream &os) override {
+			return os << to_state;
 		}
 	};
 }
