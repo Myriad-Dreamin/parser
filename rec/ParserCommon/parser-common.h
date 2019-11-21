@@ -11,3 +11,5 @@
 #include "ast-node.h"
 #include "grammar-traits.h"
 #include "calcaulation.h"
+#include "graph.h"
+#include "slice.h"

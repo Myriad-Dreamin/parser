@@ -60,5 +60,11 @@
     <ClInclude Include="parser-common.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="graph.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="slice.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

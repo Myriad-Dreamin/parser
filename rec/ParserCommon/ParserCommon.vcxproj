@@ -120,12 +120,14 @@
     <ClInclude Include="cxx17.h" />
     <ClInclude Include="functional\functional.h" />
     <ClInclude Include="grammar-traits.h" />
+    <ClInclude Include="graph.h" />
     <ClInclude Include="iterable.h" />
     <ClInclude Include="model.h" />
     <ClInclude Include="parser-common.h" />
     <ClInclude Include="print.h" />
     <ClInclude Include="production.h" />
     <ClInclude Include="result.h" />
+    <ClInclude Include="slice.h" />
     <ClInclude Include="string-algorithm\string-algorithm.h" />
     <ClInclude Include="symbol.h" />
     <ClInclude Include="uterm.h" />
