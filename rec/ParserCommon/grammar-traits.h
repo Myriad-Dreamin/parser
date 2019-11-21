@@ -15,6 +15,7 @@ namespace parse {
 		using model_t = Model<term_t, uterm_t>;
 		using string = typename model_t::string;
 		using strvec = typename model_t::strvec;
+		using state_id_t = typename m_traits::state_id_t;
 		using symbol_t = typename model_t::symbol_t;
 		using production_t = Production<symbol_t>;
 		using node_t = ASTNode<term_t, uterm_t>;

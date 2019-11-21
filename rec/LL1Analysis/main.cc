@@ -30,7 +30,7 @@ template<class grammar_traits,
 	class container=std::map<
 	typename grammar_traits::symbol_t,
 	std::map<typename grammar_traits::symbol_t, action_space::action*>*>>
-class BasicLLGrammar {
+class BasicLRGrammar {
 public:
 	using model_t = typename grammar_traits::model_t;
 	using string = typename grammar_traits::string;
@@ -39,7 +39,7 @@ public:
 	using term_t = typename grammar_traits::term_t;
 	using production_t = typename grammar_traits::production_t;
 	using node_t = typename grammar_traits::node_t;
-	using grammar_t = BasicLLGrammar<grammar_traits, container>;
+	using grammar_t = BasicLRGrammar<grammar_traits, container>;
 	using result_t = Result<typename grammar_traits::term_t,
 		typename grammar_traits::uterm_t>;
 
@@ -193,7 +193,7 @@ public:
 };
 
 
-template<class grammar_traits, class Policy=BasicLLGrammar<grammar_traits>>
+template<class grammar_traits, class Policy=BasicLRGrammar<grammar_traits>>
 class LL1Grammar : public Policy {
 public:
 	using model_t = typename grammar_traits::model_t;

@@ -84,9 +84,15 @@ namespace action_space {
 	template<typename state_id>
 	struct goto_action: public action {
 		const state_id to_state;
-		goto_action(const state_id &id) :to_state(id) {}
+		goto_action(const state_id &id):to_state(id) {}
 		virtual std::ostream &output(std::ostream &os) override {
 			return os << to_state;
+		}
+	};
+
+	struct accept_action: public action {
+		virtual std::ostream &output(std::ostream &os) override {
+			return os << "accepted";
 		}
 	};
 }

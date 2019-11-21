@@ -22,7 +22,7 @@
 #include "../LexerMock/lexer-result.h"
 #include "../ParserCommon/parser-common.h"
 #endif // VS_COMPILE
-
+#define DEBUG
 
 namespace graph {
 	template<typename id_type, typename node_type>
@@ -140,9 +140,9 @@ namespace graph {
 		}
 
 		void init(int n = VSize) {
-#ifdef DEBUG
-			assert(("n < VSize", n < VSize));
-#endif
+//#ifdef DEBUG
+//			assert(("n < VSize", n < VSize));
+//#endif
 			head.clear();
 			mal = 1;
 		}
@@ -277,17 +277,132 @@ __combine<Iterator> combine(const __slice<Iterator> &_left, const __slice<Iterat
 
 
 namespace parse {
-template<class grammar_traits>
-class LR1Grammar {
+
+
+template<class grammar_traits,
+	class container = std::map<
+	typename grammar_traits::state_id_t,
+	std::map<typename grammar_traits::symbol_t, action_space::action*>*>>
+	class BasicLRGrammar {
+	public:
+		using model_t = typename grammar_traits::model_t;
+		using string = typename grammar_traits::string;
+		using strvec = typename grammar_traits::strvec;
+		using symbol_t = typename grammar_traits::symbol_t;
+		using term_t = typename grammar_traits::term_t;
+		using production_t = typename grammar_traits::production_t;
+		using node_t = typename grammar_traits::node_t;
+		using state_id_t = typename grammar_traits::state_id_t;
+		using grammar_t = BasicLRGrammar<grammar_traits, container>;
+		using result_t = Result<typename grammar_traits::term_t,
+			typename grammar_traits::uterm_t>;
+
+	protected:
+		container *table;
+		std::stack<std::pair<node_t*, state_id_t>> stack;
+		symbol_t next_symbol, begin_symbol;
+		int error_count;
+
+		void init(container *m_table, const symbol_t &bsym) {
+			this->table = m_table;
+			this->begin_symbol = bsym;
+		}
+	public:
+
+		template<typename IStream>
+		void read(IStream &in, symbol_t &sym) {
+			term_t token;
+			in >> token;
+			sym = symbol_t(token, symbol_t::term_v);
+			if (sym == grammar_traits::eof) {
+				sym = grammar_traits::dollar;
+			}
+		}
+
+		action_space::action *act(const symbol_t &s) {};
+		void reset() {
+			error_count = 0;
+			while (stack.size()) {
+				stack.pop();
+			}
+			next_symbol = grammar_traits::epsilon;
+		}
+		template<class IStream>
+		result_t *work(IStream &is) {
+			reset();
+			auto result = new result_t();
+			auto rt = result->alloc(begin_symbol);
+			result->rt = rt;
+			stack.push(std::make_pair(rt, 0));
+			read(is, next_symbol);
+			while (stack.size()) {
+				// print::print(stack.top(), true);
+				auto acmp = (*table)[stack.top().second];
+				if (!acmp->count(next_symbol)) {
+					error_count++;
+					read(is, next_symbol);
+					continue;
+				}
+				auto norm_action = (*acmp)[next_symbol];
+				if (auto action = dynamic_cast<action_space::shift_action<state_id_t>*>(norm_action)) {
+					stack.push({result->alloc(next_symbol), action->to_state});
+					read(is, next_symbol);
+				} else if (auto action = dynamic_cast<action_space::replace_action1<symbol_t>*>(norm_action)) {
+					auto mrt = result->alloc(action->reduce);
+					for (typename std::make_signed<size_t>::type i = action->produce.size() - 1; i >= 0; i--) {
+#ifdef DEBUG
+						if (stack.top().first->symbol != action->produce[i]) {
+							std::cout << "unmatched reduction " << i << " ";
+							print::print(action->produce, true);
+						}
+#endif
+						mrt->ch.push_back(stack.top().first);
+						stack.pop();
+					}
+					std::reverse(mrt->ch.begin(), mrt->ch.end());
+					auto acmp2 = (*table)[stack.top().second];
+#ifdef DEBUG
+					if (!acmp2->count(action->reduce)) {
+						std::cout << "unmatched reduction " << stack.top().second << " "; print::print(action->reduce, true);
+					}
+#endif
+					stack.push({mrt, (dynamic_cast<action_space::goto_action<state_id_t>*>(
+						(*acmp2)[action->reduce]))->to_state});
+				} else if (auto action = dynamic_cast<action_space::accept_action*>(norm_action)) {
+					result->rt->insert(stack.top().first);
+#ifdef DEBUG
+					assert(("stack.size() == 2", stack.size() == 2));
+#endif
+					// std::cout << "stack size " << stack.size() << std::endl;
+					return result;
+				}
+#ifdef DEBUG
+				else {
+					std::cout << "action (" << stack.top().second << ", ";
+					print::print(next_symbol);
+					std::cout << ") is not determinted" << std::endl;
+				}
+#endif // DEBUG
+
+			}
+			return result;
+		}
+};
+
+
+
+
+template<class grammar_traits, class Policy=BasicLRGrammar<grammar_traits> >
+class LR1Grammar : public Policy {
 public:
 	using model_t = typename grammar_traits::model_t;
 	using string = typename grammar_traits::string;
 	using strvec = typename grammar_traits::strvec;
 	using symbol_t = typename grammar_traits::symbol_t;
 	using production_t = typename grammar_traits::production_t;
+	using state_id_t = typename grammar_traits::state_id_t;
 
 	using grammar_t = LR1Grammar<grammar_traits>;
-	using state_id = int32_t;
 private:
 	std::map<string, symbol_t> &sym_table;
 	std::vector<production_t> &prods;
@@ -297,7 +412,7 @@ private:
 	std::map<symbol_t, uint8_t> epsable;
 
 	using action_map = std::map<symbol_t, action_space::action*>;
-	std::map<state_id, action_map*> table;
+	std::map<state_id_t, action_map*> table;
 public:
 	LR1Grammar(model_t &model):
 		first(),
@@ -354,7 +469,7 @@ private:
 		calculate_epsilonable<grammar_t, grammar_traits>(*this);
 		
 		build();
-
+		Policy::init(&table, begin_symbol);
 		// Policy::table = &table;
 		// Policy::begin_symbol = begin_symbol;
 		// Policy::follow = follow;
@@ -366,12 +481,12 @@ private:
 	using hashed_item_t = int64_t;
 	using state_set = std::set<item_t>;
 	std::vector<state_set*> state;
-	std::map<hashed_item_t, state_id> hash_set;
-	graph::WeightedGraph<state_id, symbol_t, 500, 500 * 10> automa;
+	std::map<hashed_item_t, state_id_t> hash_set;
+	graph::WeightedGraph<state_id_t, symbol_t, 500, 500 * 10> automa;
 	int64_t seed, seed2;
-	const int64_t mod = 1e9 + 9;
+	const int64_t mod = 1000000000 + 9;
 	
-	state_set &alloc(state_id &idx) {
+	state_set &alloc(state_id_t &idx) {
 		state.push_back(new state_set());
 		idx = state.size() - 1;
 		return *state.back();
@@ -382,13 +497,13 @@ private:
 	void build() {
 		automa.init(499);
 		seed = std::chrono::system_clock::now().time_since_epoch().count() % mod;
-		state_id idx; state_set &mset = alloc(idx);
+		state_id_t idx; state_set &mset = alloc(idx);
 		bool proceed = false;
-		for (int i = prods.size() - 1; i >= 0;i--) {
+		for (typename std::make_signed<size_t>::type i = static_cast<typename std::make_signed<size_t>::type>(prods.size()) - 1; i >= 0;i--) {
 			auto &prod = prods[i];
-			for (int j = 0; j < prod.rhs.size(); j++) {
+			for (size_t j = 0; j < prod.rhs.size(); j++) {
 				if (prod.rhs[j] == grammar_traits::epsilon) {
-					for (int k = j + 1; k < prod.rhs.size(); k++) {
+					for (size_t k = j + 1; k < prod.rhs.size(); k++) {
 						prod.rhs[k - 1] = prod.rhs[k];
 					}
 					prod.rhs.pop_back();
@@ -409,14 +524,14 @@ private:
 		print::print(prods[mset.begin()->first.first], true);
 		walk(extend(idx));
 		std::cout << state.size() << std::endl;
-		for (int i = 0; i < state.size(); i++) {
+		/*for (int i = 0; i < state.size(); i++) {
 			for (auto j : automa.at_e(i)) {
 				std::cout << "(" << i << ", " << j.to << ", " << j.w << ")" << std::endl;
 			}
 		}
 		for (auto &st : state) {
 			print::print(*st, true);
-		}
+		}*/
 
 		for (int i = 0; i < state.size(); i++) {
 			auto acmp = new action_map();
@@ -424,15 +539,19 @@ private:
 			for (auto j : automa.at_e(i)) {
 				auto &sym = j.w;
 				if (sym.is_unterm()) {
-					(*acmp)[sym] = new action_space::goto_action<state_id>(j.to);
+					(*acmp)[sym] = new action_space::goto_action<state_id_t>(j.to);
 				} else {
-					(*acmp)[sym] = new action_space::shift_action<state_id>(j.to);
+					(*acmp)[sym] = new action_space::shift_action<state_id_t>(j.to);
 				}
 			}
 
 			for (auto &item : *state[i]) {
 				if (item.first.second == prods[item.first.first].rhs.size()) {
-					(*acmp)[item.second] = new action_space::replace_action1<symbol_t>(prods[item.first.first].lhs, prods[item.first.first].rhs);
+					if (prods[item.first.first].lhs == begin_symbol) {
+						(*acmp)[item.second] = new action_space::accept_action();
+					} else {
+						(*acmp)[item.second] = new action_space::replace_action1<symbol_t>(prods[item.first.first].lhs, prods[item.first.first].rhs);
+					}
 				}
 			}
 		}
@@ -442,7 +561,7 @@ private:
 		}
 	}
 	
-	void walk(state_id idx) {
+	void walk(state_id_t idx) {
 		if (idx < 0) {
 			return;
 		}
@@ -455,7 +574,7 @@ private:
 			sym_set.insert(prods[item.first.first].rhs[item.first.second]);
 		}
 		for (auto &sym: sym_set) {
-			state_id next_state; state_set &mset = alloc(next_state);
+			state_id_t next_state; state_set &mset = alloc(next_state);
 			for (auto &item : *state[idx]) {
 				if (prods[item.first.first].rhs.size() == item.first.second) {
 					continue;
@@ -465,14 +584,14 @@ private:
 					mset.insert(item_t{{item.first.first, item.first.second + 1}, item.second});
 				}
 			}
-			std::cout << "walking " << idx; print::print(sym); print::print(*state[idx]); print::print("->"); print::print(mset, true);
+			// std::cout << "walking " << idx; print::print(sym); print::print(*state[idx]); print::print("->"); print::print(mset, true);
 			auto true_next_state = extend(next_state);
 			automa.addedge(idx, true_next_state, sym);
 			if (true_next_state == next_state) walk(true_next_state);
 		}
 	}
 	
-	state_id extend(state_id idx) {
+	state_id_t extend(state_id_t idx) {
 		auto &mset = state[idx];
 		for (auto &item : *mset) {
 			if (prods[item.first.first].rhs.size() == item.first.second) {
@@ -691,6 +810,8 @@ struct grammar_traits_example {
 	static const auto eof = Token::Eof;
 	static const auto epsilon = Token::Eps;
 	static const auto dollar = Token::Dol;
+
+	using state_id_t = int32_t;
 };
 
 int main() {
@@ -707,7 +828,14 @@ int main() {
 	auto f = std::fstream("test0.dat", std::ios::in);
 	auto flow = LexerResult(fromIstream(f));
 
+	auto result = lr1.work(flow);
+
 	f.close();
+
+	if (result != nullptr) {
+		std::cout << *result << std::endl;
+		delete result;
+	}
 
 	delete model;
 
