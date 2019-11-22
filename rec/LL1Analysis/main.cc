@@ -26,174 +26,7 @@
 namespace parse {
 
 
-template<class grammar_traits,
-	class container=std::map<
-	typename grammar_traits::symbol_t,
-	std::map<typename grammar_traits::symbol_t, action_space::action*>*>>
-class BasicLRGrammar {
-public:
-	using model_t = typename grammar_traits::model_t;
-	using string = typename grammar_traits::string;
-	using strvec = typename grammar_traits::strvec;
-	using symbol_t = typename grammar_traits::symbol_t;
-	using term_t = typename grammar_traits::term_t;
-	using production_t = typename grammar_traits::production_t;
-	using node_t = typename grammar_traits::node_t;
-	using grammar_t = BasicLRGrammar<grammar_traits, container>;
-	using result_t = Result<typename grammar_traits::term_t,
-		typename grammar_traits::uterm_t>;
-
-protected:
-	container *table;
-	std::stack<node_t*> stack;
-	symbol_t next_symbol, begin_symbol;
-	std::map<symbol_t, std::set<symbol_t>*> follow;
-	int error_count;
-public:
-
-	template<typename IStream>
-	void read(IStream &in, symbol_t &sym) {
-		term_t token;
-		in >> token;
-		sym = symbol_t(token, symbol_t::term_v);
-	}
-
-	action_space::action *act(const symbol_t &s){};
-	void reset() {
-		error_count = 0;
-		while(stack.size()) {
-			stack.pop();
-		}
-		next_symbol = grammar_traits::epsilon;
-	}
-	template<class IStream>
-	result_t *work(IStream &is){
-		reset();
-		auto result = new result_t();
-		auto rt = result->alloc(begin_symbol);
-		result->rt = rt;
-		stack.push(rt);
-		read(is, next_symbol);
-		while(stack.size()) {
-			if (next_symbol == grammar_traits::eof) {
-				return result;
-			}
-			auto state = stack.top();
-			if (state->symbol.is_unterm()) {
-				auto &acmp = *(*table)[state->symbol];
-				if (acmp.count(next_symbol)) {
-					auto d0 = dynamic_cast<action_space::replace_action1<symbol_t>*>(acmp[next_symbol]);
-					if (d0 != nullptr) {
-						auto &prod = *d0;
-						if(state->symbol != prod.reduce) {
-							if (follow[state->symbol]->count(next_symbol)) {
-								stack.pop();
-							} else {
-								read(is, next_symbol);
-							}
-							error_count++;
-						}
-						else {
-							stack.pop();
-							for (auto &sym: prod.produce) {
-								state->insert(result->alloc(sym));	
-							}
-							for (auto iter = state->ch.rbegin(); iter != state->ch.rend(); iter++) {
-								stack.push(*iter);
-							}
-						}
-					} else {
-						auto d1 = dynamic_cast<action_space::error_action*>(acmp[next_symbol]);
-						if (d1 != nullptr) {
-							auto &info = *d1;
-							error_count++;
-						} else {
-							auto d2 = dynamic_cast<action_space::synch_action*>(acmp[next_symbol]);
-							if (d2 != nullptr) {
-								auto &info = *d2;
-								stack.pop();
-								error_count++;
-							}
-						}
-					}
-				} else {
-					read(is, next_symbol);
-					error_count++;
-				}
-			} else {
-				if (next_symbol != state->symbol) {
-					error_count++;
-				} else {
-					stack.pop();
-				}
-				read(is, next_symbol);
-			}
-		}
-		return result;
-	}
-
-	template<class IStream>
-	result_t *work2(IStream &is){
-		reset();
-		auto result = new result_t();
-		auto rt = result->alloc(begin_symbol);
-		result->rt = rt;
-		stack.push(rt);
-		read(is, next_symbol);
-		while(stack.size()) {
-			if (next_symbol == grammar_traits::eof) {
-				return result;
-			}
-			auto state = stack.top();
-			if (state->symbol.is_unterm()) {
-				auto &acmp = *(*table)[state->symbol];
-				if (acmp.count(next_symbol)) {
-					auto d0 = dynamic_cast<action_space::replace_action1<symbol_t>*>(acmp[next_symbol]);
-					if (d0 != nullptr) {
-						auto &prod = *d0;
-						if(state->symbol != prod.reduce) {
-							if (follow[state->symbol]->count(next_symbol)) {
-								stack.pop();
-							} else {
-								read(is, next_symbol);
-							}
-							error_count++;
-						}
-						else {
-							stack.pop();
-							for (auto &sym: prod.produce) {
-								state->insert(result->alloc(sym));	
-							}
-							for (auto iter = state->ch.rbegin(); iter != state->ch.rend(); iter++) {
-								stack.push(*iter);
-							}
-						}
-					} else {
-						auto d1 = dynamic_cast<action_space::error_action*>(acmp[next_symbol]);
-						if (d1 != nullptr) {
-							auto &info = *d1;
-							error_count++;
-						}
-					}
-				} else {
-					read(is, next_symbol);
-					error_count++;
-				}
-			} else {
-				if (next_symbol != state->symbol) {
-					error_count++;
-				} else {
-					stack.pop();
-				}
-				read(is, next_symbol);
-			}
-		}
-		return result;
-	}
-};
-
-
-template<class grammar_traits, class Policy=BasicLRGrammar<grammar_traits>>
+template<class grammar_traits, class Policy=BasicLLGrammar<grammar_traits>>
 class LL1Grammar : public Policy {
 public:
 	using model_t = typename grammar_traits::model_t;
@@ -281,6 +114,7 @@ private:
 			}
 		}
 
+		/*
 		for (auto &c : first) {
 			print::print(c.first);
 			print::print(' ');
@@ -302,7 +136,7 @@ private:
 		}
 		print::print("begin symbol ");
 		print::print(this->begin_symbol, true);
-		
+		*/
 		build();
 
 		Policy::table = &table;

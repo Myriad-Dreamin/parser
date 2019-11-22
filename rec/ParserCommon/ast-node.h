@@ -1,6 +1,7 @@
 #pragma once
 
 #include <iostream>
+#include "symbol.h"
 
 namespace parse {
 	template<typename term_t, typename uterm_t>

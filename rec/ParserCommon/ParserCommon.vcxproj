@@ -122,6 +122,7 @@
     <ClInclude Include="grammar-traits.h" />
     <ClInclude Include="graph.h" />
     <ClInclude Include="iterable.h" />
+    <ClInclude Include="lr1-item.h" />
     <ClInclude Include="model.h" />
     <ClInclude Include="parser-common.h" />
     <ClInclude Include="print.h" />
@@ -131,7 +132,8 @@
     <ClInclude Include="string-algorithm\string-algorithm.h" />
     <ClInclude Include="symbol.h" />
     <ClInclude Include="uterm.h" />
-    <ClInclude Include="calcaulation.h" />
+    <ClInclude Include="calculation.h" />
+    <ClInclude Include="worker.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

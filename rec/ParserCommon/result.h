@@ -1,6 +1,7 @@
 #pragma once
 
 #include <iostream>
+#include "symbol.h"
 #include "ast-node.h"
 
 

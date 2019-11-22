@@ -48,9 +48,6 @@
     <ClInclude Include="grammar-traits.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="calcaulation.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
     <ClInclude Include="print.h">
       <Filter>头文件</Filter>
     </ClInclude>
@@ -64,6 +61,15 @@
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="slice.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="lr1-item.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="calculation.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="worker.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>
