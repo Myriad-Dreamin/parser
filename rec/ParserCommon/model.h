@@ -145,10 +145,12 @@ namespace parse {
 		} catch (std::exception &e) {
 			return model->error(e.what());
 		}
+		/*
 		print::print(model->sym_table, true);
 		print::print(model->prods, true);
 		std::cout << "? ";
 		print::print(model->begin_symbol, true);
+		*/
 		return model;
 	}
 

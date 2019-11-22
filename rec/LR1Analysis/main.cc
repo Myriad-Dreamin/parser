@@ -24,7 +24,6 @@
 #endif // VS_COMPILE
 #define DEBUG
 
-
 namespace parse {
 
 
@@ -84,19 +83,34 @@ template<class grammar_traits,
 			stack.push(std::make_pair(rt, 0));
 			read(is, next_symbol);
 			while (stack.size()) {
+#ifdef DEBUG
+				std::cout << "state size " << stack.size() << " ";
+#endif // DEBUG
+
 				// print::print(stack.top(), true);
 				auto acmp = (*table)[stack.top().second];
 				if (!acmp->count(next_symbol)) {
+#ifdef DEBUG
+					std::cout << "state " << stack.top().second << " find action failed ";
+					print::print(next_symbol, true);
+#endif // DEBUG
 					error_count++;
 					read(is, next_symbol);
 					continue;
 				}
 				auto norm_action = (*acmp)[next_symbol];
 				if (auto action = dynamic_cast<action_space::shift_action<state_id_t>*>(norm_action)) {
+#ifdef DEBUG
+					std::cout << "state " << stack.top().second << " shift in " << next_symbol << std::endl;
+#endif // DEBUG
 					stack.push({result->alloc(next_symbol), action->to_state});
 					read(is, next_symbol);
+
 				} else if (auto action = dynamic_cast<action_space::replace_action1<symbol_t>*>(norm_action)) {
 					auto mrt = result->alloc(action->reduce);
+#ifdef DEBUG
+					std::cout << "state " << stack.top().second << " reduced ";
+#endif // DEBUG
 					for (typename std::make_signed<size_t>::type i = action->produce.size() - 1; i >= 0; i--) {
 #ifdef DEBUG
 						if (stack.top().first->symbol != action->produce[i]) {
@@ -114,6 +128,10 @@ template<class grammar_traits,
 						std::cout << "unmatched reduction " << stack.top().second << " "; print::print(action->reduce, true);
 					}
 #endif
+#ifdef DEBUG
+					std::cout << *mrt << " to state " << (dynamic_cast<action_space::goto_action<state_id_t>*>(
+						(*acmp2)[action->reduce]))->to_state << std::endl;
+#endif // DEBUG
 					stack.push({mrt, (dynamic_cast<action_space::goto_action<state_id_t>*>(
 						(*acmp2)[action->reduce]))->to_state});
 				} else if (auto action = dynamic_cast<action_space::accept_action*>(norm_action)) {
@@ -122,6 +140,9 @@ template<class grammar_traits,
 					assert(("stack.size() == 2", stack.size() == 2));
 #endif
 					// std::cout << "stack size " << stack.size() << std::endl;
+					if (error_count != 0) {
+						result->code = ResultCode::Error;
+					}
 					return result;
 				}
 #ifdef DEBUG
@@ -132,6 +153,9 @@ template<class grammar_traits,
 				}
 #endif // DEBUG
 
+			}
+			if (error_count != 0) {
+				result->code = ResultCode::Error;
 			}
 			return result;
 		}
@@ -267,10 +291,9 @@ private:
 		if (mset.size() == 0) {
 			throw std::invalid_argument("must with only one production reduce to begin symbol");
 		}
-		print::print(prods[mset.begin()->first.first], true);
 		walk(extend(idx));
-		std::cout << state.size() << std::endl;
-		/*for (int i = 0; i < state.size(); i++) {
+		/*std::cout << state.size() << std::endl;
+		for (int i = 0; i < state.size(); i++) {
 			for (auto j : automa.at_e(i)) {
 				std::cout << "(" << i << ", " << j.to << ", " << j.w << ")" << std::endl;
 			}
@@ -285,14 +308,29 @@ private:
 			for (auto j : automa.at_e(i)) {
 				auto &sym = j.w;
 				if (sym.is_unterm()) {
+#ifdef DEBUG
+					if ((*acmp).count(sym)) {
+						std::cout << "conflict item"; print::print(sym, true);
+					}
+#endif
 					(*acmp)[sym] = new action_space::goto_action<state_id_t>(j.to);
 				} else {
+#ifdef DEBUG
+					if ((*acmp).count(sym)) {
+						std::cout << "conflict item"; print::print(sym, true);
+					}
+#endif
 					(*acmp)[sym] = new action_space::shift_action<state_id_t>(j.to);
 				}
 			}
 
 			for (auto &item : *state[i]) {
 				if (item.first.second == prods[item.first.first].rhs.size()) {
+#ifdef DEBUG
+					if ((*acmp).count(item.second)) {
+						std::cout << "conflict item"; print::print(item.second, true);
+					}
+#endif
 					if (prods[item.first.first].lhs == begin_symbol) {
 						(*acmp)[item.second] = new action_space::accept_action();
 					} else {
@@ -305,13 +343,19 @@ private:
 		for (auto &st : state) {
 			delete st;
 		}
+
+		for (const auto &acmp : table) {
+			print::print(acmp.first);
+			print::print(' ');
+			print::print(*acmp.second, true);
+		}
 	}
 	
 	void walk(state_id_t idx) {
 		if (idx < 0) {
 			return;
 		}
-		std::cout << "walking " << idx; print::print(*state[idx], true);
+		// std::cout << "walking " << idx; print::print(*state[idx], true);
 		std::set<symbol_t> sym_set;
 		for (auto &item : *state[idx]) {
 			if (prods[item.first.first].rhs.size() == item.first.second) {
@@ -349,6 +393,7 @@ private:
 				std::vector<symbol_t> atom_v; atom_v.push_back(item.second);
 				auto combine_v = combine(slice(prods[item.first.first].rhs, item.first.second + 1), slice(atom_v));
 				get_first1<grammar_t, grammar_traits, decltype(combine_v)>(*this, combine_v, fset);
+				fset.erase(grammar_traits::epsilon);
 				extend_to(*mset, fset, sym);
 			}
 		}
@@ -363,10 +408,10 @@ private:
 		return idx;
 	}
 
-	void extend_to(state_set &mset, std::set<symbol_t> lookahead, const symbol_t &sym) {
+	void extend_to(state_set &mset, std::set<symbol_t> lookahead, const symbol_t &next_sym) {
 		for (int i = prods.size() - 1; i >= 0; i--) {
 			auto &prod = prods[i];
-			if (prod.lhs == sym) {
+			if (prod.lhs == next_sym) {
 				auto item = std::make_pair(i, 0);
 				for (auto &asym : lookahead) {
 					auto ritem = std::make_pair(item, asym);
@@ -375,7 +420,12 @@ private:
 						if (prod.rhs.size()) {
 							auto &sym = prod.rhs[0];
 							if (sym.is_unterm()) {
-								extend_to(mset, lookahead, sym);
+								std::set<symbol_t> fset;
+								std::vector<symbol_t> atom_v; atom_v.push_back(asym);
+								auto combine_v = combine(slice(prod.rhs, 1), slice(atom_v));
+								get_first1<grammar_t, grammar_traits, decltype(combine_v)>(*this, combine_v, fset);
+								fset.erase(grammar_traits::epsilon);
+								extend_to(mset, fset, sym);
 							}
 						}
 					}
@@ -384,11 +434,12 @@ private:
 		}
 	}
 
+
 	hashed_item_t calculate_hash(state_set &mset) {
 		hashed_item_t result = 0;
 		static const int64_t _233_2 = (2333333LL * 2333333LL) % mod;
 		for (auto &item : mset) {
-			result = (seed * result + item.first.first * _233_2 + item.first.second * 2333333LL + int64_t(item.second.data.uterm)) % mod;
+			result = (seed * result + item.first.first * _233_2 % mod + item.first.second * 2333333LL % mod + item.second.hash()) % mod;
 		}
 		return result;
 	}
@@ -436,13 +487,15 @@ struct grammar_traits_example {
 };
 
 int main() {
+
+
 	auto model = parse::G<Token, parse::UTerm>("grammar.gr");
 	if (model->is_error()) {
 		std::cout << model->error() << std::endl;
 	}
 
 	using gt = parse::basic_grammar_traits<Token, parse::UTerm, grammar_traits_example>;
-	
+
 	auto lr1 = parse::LR1Grammar<gt>(model);
 
 	

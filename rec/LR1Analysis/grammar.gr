@@ -1,12 +1,17 @@
 # grammar model
-uter S = 0, E = 1, ED = 2, T = 3, TD = 4, F = 5
+
+# 非终结符 N = {S, E, T, F}
+uter S = 0, E = 1, T = 3, F = 5
+
+# 终结符 T = {+,-,*,/,(,),num}
 term + = 0, - = 1, * = 2, / = 3, ( = 4, ) = 5, num = 6, epsilon = 65533, dollar = 65534
+
+# 推导式 P
 P {
     S -> E
-    E -> ( E ) ED | num ED
-    ED -> + T ED | - T ED | epsilon
-    T -> ( E ) TD | num TD
-    TD -> * F TD | / F TD | epsilon
+    E -> E + T | E - T | T
+    T -> T * F | T / F | F
     F -> ( E ) | num
 }
+# 起始符 S
 begi S

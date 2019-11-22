@@ -26,4 +26,13 @@ namespace functional
 		}
 		return vec;
 	}
+
+	template<typename Iterator, typename Receiver>
+	Receiver fold(Iterator _begin, Iterator _end, void (*folder)(Receiver&, const decltype(*_begin)&), Receiver recv = Receiver()) {
+		for (; _begin != _end; _begin++) {
+			folder(recv, *_begin);
+		}
+		return recv;
+	}
+
 } // namespace functional

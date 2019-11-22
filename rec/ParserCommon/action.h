@@ -24,7 +24,7 @@ namespace action_space {
 		replace_action(const std::vector<symbol_t> &reduce,
 			const std::vector<symbol_t> &produce): reduce(reduce), produce(produce) {}
 		virtual std::ostream &output(std::ostream &os) override {
-			return os << *this;
+			return os << "replace " << *this;
 		}
 	};
 
@@ -46,7 +46,7 @@ namespace action_space {
 
 		}
 		virtual std::ostream &output(std::ostream &os) override {
-			return os << *this;
+			return os << "replace1 " << *this;
 		}
 	};
 
@@ -63,21 +63,21 @@ namespace action_space {
 		const state_id to_state;
 		shift_action(const state_id &id):to_state(id) {}
 		virtual std::ostream &output(std::ostream &os) override {
-			return os << to_state;
+			return os << "shift " << to_state;
 		}
 	};
 	
 	struct error_action: public action {
 		const std::string error_info;
 		virtual std::ostream &output(std::ostream &os) override {
-			return os << error_info;
+			return os << "error " << error_info;
 		}
 	};
 
 	struct synch_action: public action {
 		const std::string synch_info;
 		virtual std::ostream &output(std::ostream &os) override {
-			return os << synch_info;
+			return os << "synch " << synch_info;
 		}
 	};
 
@@ -86,7 +86,7 @@ namespace action_space {
 		const state_id to_state;
 		goto_action(const state_id &id):to_state(id) {}
 		virtual std::ostream &output(std::ostream &os) override {
-			return os << to_state;
+			return os << "goto " << to_state;
 		}
 	};
 

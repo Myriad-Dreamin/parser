@@ -1,5 +1,7 @@
 #pragma once
 
+#include "functional/functional.h"
+
 namespace parse {
 	template<typename term_t, typename uterm_t>
 	struct Symbol {
@@ -74,6 +76,19 @@ namespace parse {
 
 		bool operator!= (const Symbol<term_t, uterm_t> &y) const {
 			return !operator==(y);
+		}
+
+		static const int64_t mod = 1000000007;
+
+		static void hasher(int64_t &hs, const char &byte_v) {
+			hs = (hs * 2333333LL % mod + mod + byte_v) % mod;
+		}
+
+		int64_t hash() const {
+			return (functional::fold<const char*, int64_t>(
+				reinterpret_cast<const char*>(&data),
+				reinterpret_cast<const char*>(&data) + sizeof(data),
+				hasher) * 2333333LL % mod + mod + ut * 233333333LL) % mod;
 		}
 
 		template<typename u, typename v>
