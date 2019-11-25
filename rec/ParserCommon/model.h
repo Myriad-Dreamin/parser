@@ -8,7 +8,9 @@
 #include "cxx17.h"
 
 #include <iostream>
+#include <fstream>
 #include <string>
+#include <cstring>
 #include <vector>
 #include <map>
 

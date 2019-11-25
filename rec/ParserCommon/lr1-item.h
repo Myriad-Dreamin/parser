@@ -30,14 +30,11 @@ namespace parse {
 		std::vector<production_t> &prods;
 		std::map<symbol_t, std::set<symbol_t>* > first;
 		symbol_t &begin_symbol;
-		std::map<symbol_t, uint8_t> &epsable;
 
 		LR1ActionCalculationContext(
-			std::vector<production_t> &prods, std::map<symbol_t, std::set<symbol_t>* > &first,
-			std::map<symbol_t, uint8_t> &epsable, symbol_t &begin_symbol):
+			std::vector<production_t> &prods, std::map<symbol_t, std::set<symbol_t>* > &first, symbol_t &begin_symbol):
 			prods(prods),
 			first(first),
-			epsable(epsable),
 			begin_symbol(begin_symbol)
 		{}
 
@@ -191,10 +188,9 @@ namespace parse {
 		std::vector<typename grammar_traits::production_t> &prods,
 		std::map<typename grammar_traits::symbol_t,
 		std::set<typename grammar_traits::symbol_t>* > &first,
-		std::map<typename grammar_traits::symbol_t, uint8_t> &epsable,
 		typename grammar_traits::symbol_t &begin_symbol,
 		const std::function<void(LR1ActionCalculationContext<grammar_traits>&)> &callback) {
-		LR1ActionCalculationContext<grammar_traits>(prods, first, epsable, begin_symbol).build().callback(callback);
+		LR1ActionCalculationContext<grammar_traits>(prods, first, begin_symbol).build().callback(callback);
 	}
 
 

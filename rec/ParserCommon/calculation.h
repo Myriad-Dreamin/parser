@@ -28,28 +28,25 @@ namespace parse {
 				auto &sym = symset.first;
 				auto set = symset.second;
 				size_t ls = set->size();
-				// print::print("testing ");
-				// print::print(set); print::print(" ");
-				// print::print(symset.second); print::print(" "); print::print(sym); print::print(" ");
-				// print::print(*set, true);
-				// lower_bound or sort() && iter will be better
 				for (auto &prod : g.prods) {
 					if (prod.lhs == sym) {
-						// print::print("using ");
-						// print::print(prod, true);
-
+                        bool flag = true;
 						for (auto &rsym : prod.rhs) {
 							auto &rset = *g.first[rsym];
-							// print::print("merge ");
-							// print::print(*set);
-							// print::print(" ");
-							// print::print(rset, true);
-
-							set->insert(rset.begin(), rset.end());
+							if (rset.count(grammar_traits::epsilon) && !set->count(grammar_traits::epsilon)) {
+                                set->insert(rset.begin(), rset.end());
+                                set->erase(grammar_traits::epsilon);
+                            } else {
+                                set->insert(rset.begin(), rset.end());
+                            }
 							if (!rset.count(grammar_traits::epsilon)) {
+                                flag = false;
 								break;
 							}
 						}
+                        if (flag) {
+                            set->insert(grammar_traits::epsilon);
+                        }
 					}
 				}
 				if (set->size() != ls) {
@@ -57,91 +54,6 @@ namespace parse {
 				}
 			}
 		} while (changed);
-		// for (auto &c : g.first) {
-		// 	print::print(c.first);
-		// 	print::print(' ');
-		// 	print::print(c.second);
-		// 	print::print(' ');
-		// 	print::print(*c.second, true);
-		// }
-	}
-
-	namespace epsilonable {
-		enum ExploreState {
-			No,
-			Yes,
-			Unknown,
-		};
-	}
-
-	template<class Grammar, class grammar_traits>
-	void calculate_epsilonable(Grammar &g) {
-		using namespace epsilonable;
-		using production_t = typename Grammar::production_t;
-		std::vector<production_t*> conts;
-
-		for (auto &ss : g.sym_table) {
-			g.epsable[ss.second] = ss.second.is_unterm() ? ExploreState::Unknown : ExploreState::No;
-		}
-		g.epsable[grammar_traits::epsilon] = ExploreState::Yes;
-		for (auto &prod : g.prods) {
-			auto &sym = prod.lhs;
-			if (g.epsable[sym] != ExploreState::Unknown) {
-				continue;
-			}
-			if (prod.rhs.size() == 1 && prod.rhs[0] == grammar_traits::epsilon) {
-				g.epsable[sym] = ExploreState::Yes;
-				continue;
-			}
-			bool cont = true;
-			for (auto &rsym : prod.rhs) {
-				auto &rst = g.epsable[rsym];
-				if (rst == ExploreState::No) {
-					cont = false;
-				}
-			}
-			if (cont) {
-				conts.push_back(&prod);
-			}
-		}
-		bool changed, prod_eps;
-		do {
-			changed = false;
-			for (typename std::make_signed<size_t>::type
-				i = conts.size() - 1; i >= 0; i--) {
-				auto &prod = *(conts[i]);
-				if (g.epsable[prod.lhs] != ExploreState::Unknown) {
-					std::swap(conts[i], conts.back());
-					conts.pop_back();
-					continue;
-				}
-				prod_eps = true;
-				for (auto &rsym : prod.rhs) {
-					auto &rst = g.epsable[rsym];
-					if (rst == ExploreState::No) {
-						prod_eps = false;
-						g.epsable[prod.lhs] = ExploreState::No;
-						changed = true;
-						std::swap(conts[i], conts.back());
-						conts.pop_back();
-						break;
-					}
-					if (rst == ExploreState::Unknown) {
-						prod_eps = false;
-						break;
-					}
-				}
-				if (prod_eps) {
-					g.epsable[prod.lhs] = ExploreState::Yes;
-					changed = true;
-				}
-			}
-		} while (changed);
-		for (auto &ss : g.sym_table) {
-			if (g.epsable[ss.second] == ExploreState::Unknown) {
-				g.epsable[ss.second] = ExploreState::No;
-			}
-		}
 	}
 
 	template<class Grammar, class grammar_traits>
@@ -164,7 +76,6 @@ namespace parse {
 				auto &lhs = prod.lhs;
 				auto &rhs = prod.rhs;
 				std::set<symbol_t> mset(*g.follow[lhs]);
-				mset.erase(grammar_traits::epsilon);
 				for (typename std::make_signed<size_t>::type
 					i = rhs.size() - 1; i >= 0; i--) {
 					auto &rsym = rhs[i];
@@ -175,7 +86,7 @@ namespace parse {
 							changed = true;
 						}
 					}
-					if (!g.epsable[rsym]) {
+					if (!g.first[rsym]->count(grammar_traits::epsilon)) {
 						mset.clear();
 					}
 					mset.insert(g.first[rsym]->begin(), g.first[rsym]->end());
@@ -192,7 +103,7 @@ namespace parse {
 		std::set<typename grammar_traits::symbol_t> &res) {
 		for (auto &sym : sequence) {
 			res.insert(g.first[sym]->begin(), g.first[sym]->end());
-			if (!g.epsable[sym]) {
+			if (!g.first[sym]->count(grammar_traits::epsilon)) {
 				return;
 			}
 		}
@@ -215,7 +126,7 @@ namespace parse {
 		std::set<typename grammar_traits::symbol_t> &res) {
 		for (auto &sym : prod.rhs) {
 			res.insert(g.first[sym]->begin(), g.first[sym]->end());
-			if (!g.epsable[sym]) {
+			if (!g.first[sym]->count(grammar_traits::epsilon)) {
 				return;
 			}
 		}

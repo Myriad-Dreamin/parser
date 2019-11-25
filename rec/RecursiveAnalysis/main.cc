@@ -6,8 +6,6 @@
 #include <string>
 
 
-
-
 #ifdef VS_COMPILE
 #include <lexer-result.h>
 #include <parser-common.h>
@@ -48,17 +46,8 @@ namespace parse {
 		}
 		void parseE(node_t* &rt) {
 			parseT(rt->insert(result->alloc(UTerm::T, true)));
-			if (rt->ch.back() == nullptr) {
-				rt->ch.pop_back();
-			}
 			if (token != TokenTable::eof) {
 				parseED(rt->insert(result->alloc(UTerm::ED, true)));
-				if (rt->ch.back() == nullptr) {
-					rt->ch.pop_back();
-				}
-			}
-			if (rt->ch.empty()) {
-				rt = nullptr;
 			}
 		}
 		void parseED(node_t* &rt) {
@@ -66,31 +55,13 @@ namespace parse {
 				rt->insert(result->alloc(token));
 				read();
 				parseT(rt->insert(result->alloc(UTerm::T, true)));
-				if (rt->ch.back() == nullptr) {
-					rt->ch.pop_back();
-				}
 				parseED(rt->insert(result->alloc(UTerm::ED, true)));
-				if (rt->ch.back() == nullptr) {
-					rt->ch.pop_back();
-				}
-			}
-			if (rt->ch.empty()) {
-				rt = nullptr;
 			}
 		}
 		void parseT(node_t* &rt) {
 			parseF(rt->insert(result->alloc(UTerm::F, true)));
-			if (rt->ch.back() == nullptr) {
-				rt->ch.pop_back();
-			}
 			if (token != TokenTable::eof) {
 				parseTD(rt->insert(result->alloc(UTerm::TD, true)));
-				if (rt->ch.back() == nullptr) {
-					rt->ch.pop_back();
-				}
-			}
-			if (rt->ch.empty()) {
-				rt = nullptr;
 			}
 		}
 		void parseTD(node_t* &rt) {
@@ -98,16 +69,7 @@ namespace parse {
 				rt->insert(result->alloc(token));
 				read();
 				parseF(rt->insert(result->alloc(UTerm::F, true)));
-				if (rt->ch.back() == nullptr) {
-					rt->ch.pop_back();
-				}
 				parseTD(rt->insert(result->alloc(UTerm::TD, true)));
-				if (rt->ch.back() == nullptr) {
-					rt->ch.pop_back();
-				}
-			}
-			if (rt->ch.empty()) {
-				rt = nullptr;
 			}
 		}
 		void parseF(node_t* &rt) {
@@ -129,7 +91,6 @@ namespace parse {
 			}
 		}
 	};
-
 }
 struct token_adapt_example {
 	static const Token add = Token::Add;

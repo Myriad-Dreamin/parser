@@ -43,7 +43,6 @@ private:
 	
 	std::map<symbol_t, std::set<symbol_t>* > first;
 	std::map<symbol_t, std::set<symbol_t>* > follow;
-	std::map<symbol_t, uint8_t> epsable;
 
 	using action_map = std::map<symbol_t, action_space::action*>;
 	std::map<symbol_t, action_map*> table;
@@ -51,7 +50,6 @@ public:
 	LL1Grammar(model_t &model) :
 		first(),
 		follow(),
-		epsable(),
 		table(),
 		sym_table(model.sym_table),
 		prods(model.prods),
@@ -60,7 +58,6 @@ public:
 	LL1Grammar(model_t *model) :
 		first(),
 		follow(),
-		epsable(),
 		table(),
 		sym_table(model->sym_table),
 		prods(model->prods),
@@ -71,7 +68,6 @@ public:
 		const symbol_t &begin_symbol) :
 		first(),
 		follow(),
-		epsable(),
 		table(),
 		sym_table(sym_table),
 		prods(prods),
@@ -80,7 +76,6 @@ public:
 	virtual ~LL1Grammar() {
 		delete_first_symbols(*this);
 		delete_follow_symbols(*this);
-		delete_epsable_symbols(*this);
 		for (auto &x: table) {
 			for (auto &y : *x.second) {
 				delete y.second;
@@ -99,7 +94,6 @@ public:
 private:
 	void init() {
 		calculate_first_fixed_point<grammar_t, grammar_traits>(*this);
-		calculate_epsilonable<grammar_t, grammar_traits>(*this);
 		calculate_follow_fixed_point<grammar_t, grammar_traits>(*this);
 
 		for (int i = prods.size() - 1; i >= 0; i--) {
@@ -152,13 +146,10 @@ private:
 		std::set<symbol_t> mset;
 		for (auto &prod : prods) {
 			get_first1<grammar_t, grammar_traits>(*this, prod, mset);
-			print::print(prod);
-			print::print(' ');
-			print::print(mset, true);
 			auto &acmp = *table[prod.lhs];
 			for (auto &sym : mset) {
 				if (acmp.count(sym)) {
-					std::stringstream s("conflct ");
+					std::stringstream s("conflict ");
 					print::print("prod:", false, s);
 					print::print(prod, false, s);
 					print::print("mset:", false, s);
@@ -171,18 +162,10 @@ private:
 				acmp[sym] = a;
 			}
 		}
-		for (auto &c : table) {
-			print::print(c.first);
-			print::print(' ');
-			print::print(*c.second, true);
-		}
 	}
 
 	template<class u, class v>
 	friend void calculate_first_fixed_point(u &g);
-
-	template<class u, class w>
-	friend void calculate_epsilonable(u &g);
 
 	template<class u, class v>
 	friend void calculate_follow_fixed_point(u &g);
@@ -200,8 +183,6 @@ private:
 	friend void delete_first_symbols(u &g);
 	template<class u>
 	friend void delete_follow_symbols(u &g);
-	template<class u>
-	friend void delete_epsable_symbols(u &g);
 };
 
 

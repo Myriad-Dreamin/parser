@@ -44,14 +44,12 @@ private:
 	symbol_t begin_symbol;
 
 	std::map<symbol_t, std::set<symbol_t>* > first;
-	std::map<symbol_t, uint8_t> epsable;
 
 	using action_map = std::map<symbol_t, action_space::action*>;
 	std::map<state_id_t, action_map*> table;
 public:
 	LR1Grammar(model_t &model):
 		first(),
-		epsable(),
 		table(),
 		sym_table(model.sym_table),
 		prods(model.prods),
@@ -61,7 +59,6 @@ public:
 
 	LR1Grammar(model_t *model):
 		first(),
-		epsable(),
 		table(),
 		sym_table(model->sym_table),
 		prods(model->prods),
@@ -73,7 +70,6 @@ public:
 		std::vector<production_t> &prods,
 		const symbol_t &begin_symbol):
 		first(),
-		epsable(),
 		table(),
 		sym_table(sym_table),
 		prods(prods),
@@ -101,9 +97,8 @@ public:
 private:
 	void init() {
 		calculate_first_fixed_point<grammar_t, grammar_traits>(*this);
-		calculate_epsilonable<grammar_t, grammar_traits>(*this);
 		using context_t = LR1ActionCalculationContext<grammar_traits>;
-		calculate_LR_1_items<grammar_traits>(prods, first, epsable, begin_symbol, [&](
+		calculate_LR_1_items<grammar_traits>(prods, first, begin_symbol, [&](
 			context_t &context) {
 			/*std::cout << state.size() << std::endl;
 			for (int i = 0; i < state.size(); i++) {
@@ -169,9 +164,6 @@ private:
 	template<class u, class v>
 	friend void calculate_first_fixed_point(u &g);
 
-	template<class u, class w>
-	friend void calculate_epsilonable(u &g);
-
 	template<class u, class v>
 	friend void get_first1(u &g, typename v::production_t &prod,
 		std::set<typename v::symbol_t> &res);
@@ -193,8 +185,6 @@ private:
 	friend void delete_first_symbols(u &g);
 	template<class u>
 	friend void delete_follow_symbols(u &g);
-	template<class u>
-	friend void delete_epsable_symbols(u &g);
 };
 
 }
