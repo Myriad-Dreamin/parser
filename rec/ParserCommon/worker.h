@@ -194,6 +194,9 @@ template<class grammar_traits,
 					return result;
 				}
 				auto state = stack.top();
+#ifdef DEBUG
+				std::cout << "next symbol "; print::print(next_symbol);
+#endif
 				if (state->symbol.is_unterm()) {
 					auto &acmp = *(*table)[state->symbol];
 					if (acmp.count(next_symbol)) {
@@ -201,6 +204,12 @@ template<class grammar_traits,
 						if (d0 != nullptr) {
 							auto &prod = *d0;
 							if (state->symbol != prod.reduce) {
+#ifdef DEBUG
+								std::cout << " mismatch production ";
+								print::print(prod.reduce);
+								std::cout << " -> ";
+								print::print(prod.produce, true);
+#endif
 								if (follow[state->symbol]->count(next_symbol)) {
 									stack.pop();
 								} else {
@@ -208,6 +217,12 @@ template<class grammar_traits,
 								}
 								error_count++;
 							} else {
+#ifdef DEBUG
+								std::cout << " use production ";
+								print::print(prod.reduce);
+									std::cout << " -> ";
+								print::print(prod.produce, true);
+#endif
 								stack.pop();
 								for (auto &sym : prod.produce) {
 									state->insert(result->alloc(sym));
@@ -217,9 +232,13 @@ template<class grammar_traits,
 								}
 							}
 						} else {
+#ifdef DEBUG
+							std::cout << " error " << std::endl;
+#endif
 							auto d1 = dynamic_cast<action_space::error_action*>(acmp[next_symbol]);
 							if (d1 != nullptr) {
 								auto &info = *d1;
+								read(is, next_symbol);
 								error_count++;
 							} else {
 								auto d2 = dynamic_cast<action_space::synch_action*>(acmp[next_symbol]);
@@ -235,6 +254,10 @@ template<class grammar_traits,
 						error_count++;
 					}
 				} else {
+#ifdef DEBUG
+					std::cout << " matched top stack ";
+					print::print(state->symbol, true);
+#endif
 					if (next_symbol != state->symbol) {
 						error_count++;
 					} else {

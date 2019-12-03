@@ -107,7 +107,6 @@ private:
 				}
 			}
 		}
-
 		/*
 		for (auto &c : first) {
 			print::print(c.first);
@@ -207,6 +206,7 @@ int main() {
 	using LL1 = parse::LL1Grammar<gt>;
 	auto grammar = LL1(model);
 	auto f = std::fstream("test0.dat", std::ios::in);
+
 
 	auto flow = LexerResult(fromIstream(f));
 

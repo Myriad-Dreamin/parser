@@ -8,5 +8,7 @@
 
 #ifndef PCH_H
 #define PCH_H
-
+#ifdef _DEBUG
+#define DEBUG
+#endif
 #endif //PCH_H
