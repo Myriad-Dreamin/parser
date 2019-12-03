@@ -62,9 +62,9 @@ namespace parse {
 				stack.push(std::make_pair(rt, 0));
 				read(is, next_symbol);
 				while (stack.size()) {
-#ifdef DEBUG
-					std::cout << "state size " << stack.size() << " ";
-#endif // DEBUG
+// #ifdef DEBUG
+// 					std::cout << "state size " << stack.size() << " ";
+// #endif // DEBUG
 
 					// print::print(stack.top(), true);
 					auto acmp = (*table)[stack.top().second];
